@@ -275,12 +275,14 @@ const Editor = () => {
       fill: "#666666",
       fontFamily: "Inter",
       fontWeight: "normal",
+      editable: false,
+      selectable: true,
     });
     
     fabricCanvas.add(text);
     fabricCanvas.setActiveObject(text);
     fabricCanvas.renderAll();
-    toast("Certificate ID added to the certificate!");
+    toast("Certificate ID added to the certificate! You can move but not edit it.");
   };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -877,11 +879,11 @@ const Editor = () => {
               </div>
               
               <div className="flex items-center gap-3">
-                 <SendCertificateDialog 
-                   canvasRef={canvasRef} 
-                   fabricCanvas={fabricCanvas}
-                   certificateId={certificateId}
-                 />
+          <SendCertificateDialog 
+            canvasRef={canvasRef} 
+            fabricCanvas={fabricCanvas}
+            certificateId={generateCertificateId()}
+          />
                 <Button variant="outline" size="sm" onClick={handleSave}>
                   <Save className="h-4 w-4 mr-2" />
                   Save

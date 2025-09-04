@@ -14,6 +14,7 @@ interface SendCertificateRequest {
   certificateData: string; // Base64 image data
   senderName?: string;
   message?: string;
+  certificateId?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -47,11 +48,12 @@ const handler = async (req: Request): Promise<Response> => {
       certificateTitle, 
       certificateData,
       senderName,
-      message 
+      message,
+      certificateId 
     }: SendCertificateRequest = await req.json();
 
-    // Generate unique verification ID
-    const verificationId = `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    // Use provided certificate ID or generate new one
+    const verificationId = certificateId || `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     
     // Save certificate to database
     const { data: certificate, error: saveError } = await supabase
@@ -62,7 +64,7 @@ const handler = async (req: Request): Promise<Response> => {
         recipient_name: recipientName,
         recipient_email: recipientEmail,
         verification_id: verificationId,
-        certificate_data: { imageData: certificateData },
+        certificate_data: { imageData: `data:image/png;base64,${certificateData}` },
         certificate_url: certificateData // Store the image data
       })
       .select()

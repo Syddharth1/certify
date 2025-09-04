@@ -107,7 +107,8 @@ export const SendCertificateDialog = ({ canvasRef, fabricCanvas, certificateId }
           certificateTitle: formData.certificateTitle || "Certificate",
           certificateData: certificateData,
           senderName: formData.senderName,
-          message: formData.message
+          message: formData.message,
+          certificateId: certificateId
         }
       });
 
