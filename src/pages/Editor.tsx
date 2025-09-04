@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import QRCodeGenerator from "qrcode";
 import { ElementManager } from "@/components/ElementManager";
 import { SendCertificateDialog } from "@/components/SendCertificateDialog";
+import AIAssistantDialog from "@/components/AIAssistantDialog";
 
 const Editor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,6 +53,17 @@ const Editor = () => {
   const [canvasHistory, setCanvasHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [certificateId, setCertificateId] = useState<string>("");
+  const [certificateTitle, setCertificateTitle] = useState("Certificate of Achievement");
+  const [message, setMessage] = useState("This certifies that the above named person has successfully completed the requirements.");
+  const [senderName, setSenderName] = useState("");
+
+  const handleAISuggestion = (text: string, type: 'title' | 'message') => {
+    if (type === 'title') {
+      setCertificateTitle(text);
+    } else if (type === 'message') {
+      setMessage(text);
+    }
+  };
 
   const saveToHistory = () => {
     if (!fabricCanvas) return;
@@ -879,11 +891,12 @@ const Editor = () => {
               </div>
               
               <div className="flex items-center gap-3">
-          <SendCertificateDialog 
-            canvasRef={canvasRef} 
-            fabricCanvas={fabricCanvas}
-            certificateId={generateCertificateId()}
-          />
+                <AIAssistantDialog onSuggestion={handleAISuggestion} />
+                <SendCertificateDialog 
+                  canvasRef={canvasRef} 
+                  fabricCanvas={fabricCanvas}
+                  certificateId={generateCertificateId()}
+                />
                 <Button variant="outline" size="sm" onClick={handleSave}>
                   <Save className="h-4 w-4 mr-2" />
                   Save
