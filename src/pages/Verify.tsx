@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import QRScanner from "@/components/QRScanner";
+import Navigation from "@/components/Navigation";
 
 const Verify = () => {
   const [verificationCode, setVerificationCode] = useState("");
@@ -77,8 +78,10 @@ const Verify = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
-      <div className="container mx-auto p-8">
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-gradient-subtle pt-20">
+        <div className="container mx-auto p-8">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
@@ -281,8 +284,9 @@ const Verify = () => {
             onClose={() => setShowQRScanner(false)}
           />
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

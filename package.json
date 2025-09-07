@@ -50,6 +50,7 @@
     "fabric": "^6.0.2",
     "input-otp": "^1.2.4",
     "jspdf": "^2.5.1",
+    "jsqr": "^1.4.0",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "qr-scanner": "^1.4.2",

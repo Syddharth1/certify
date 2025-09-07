@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { X, Camera } from "lucide-react";
+import jsQR from "jsqr";
 
 interface QRScannerProps {
   onScan: (result: string) => void;
@@ -61,19 +62,15 @@ const QRScanner = ({ onScan, onClose }: QRScannerProps) => {
         canvas.height = video.videoHeight;
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Simple QR code detection simulation
-        // In a real app, you'd use a proper QR code library like jsQR
+        // QR code detection using jsQR
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
         
-        // For demo purposes, we'll simulate finding a QR code after a few seconds
-        setTimeout(() => {
-          if (isScanning) {
-            // Simulate finding a verification ID
-            const mockVerificationId = "CERT-" + Date.now().toString().slice(-8);
-            onScan(mockVerificationId);
-            stopCamera();
-          }
-        }, 3000);
+        if (qrCode) {
+          onScan(qrCode.data);
+          stopCamera();
+          return;
+        }
       }
 
       if (isScanning) {

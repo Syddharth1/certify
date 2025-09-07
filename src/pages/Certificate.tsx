@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Download, Shield, Calendar, User, Award } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
+import Navigation from "@/components/Navigation";
 
 interface Certificate {
   id: string;
@@ -85,18 +86,23 @@ const Certificate = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+      <>
+        <Navigation />
+        <div className="min-h-screen bg-gradient-subtle flex items-center justify-center pt-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading certificate...</p>
         </div>
-      </div>
+        </div>
+      </>
     );
   }
 
   if (error || !certificate) {
     return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+      <>
+        <Navigation />
+        <div className="min-h-screen bg-gradient-subtle flex items-center justify-center pt-20">
         <Card className="max-w-md mx-auto">
           <CardHeader className="text-center">
             <Shield className="h-16 w-16 text-destructive mx-auto mb-4" />
@@ -108,13 +114,16 @@ const Certificate = () => {
             </p>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
-      <div className="container mx-auto p-8">
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-gradient-subtle pt-20">
+        <div className="container mx-auto p-8">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
@@ -191,8 +200,9 @@ const Certificate = () => {
             </CardContent>
           </Card>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Navigation from "@/components/Navigation";
 
 const Templates = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -73,8 +74,10 @@ const Templates = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
-      <div className="container mx-auto p-8">
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-gradient-subtle pt-20">
+        <div className="container mx-auto p-8">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-5xl font-display font-bold text-foreground mb-4">
@@ -184,8 +187,9 @@ const Templates = () => {
             Start from Blank
           </Button>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
