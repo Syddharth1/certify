@@ -18,9 +18,9 @@ serve(async (req) => {
   }
 
   try {
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      throw new Error('Gemini API key not configured');
     }
 
     const { prompt, type }: AIRequest = await req.json();
@@ -37,31 +37,36 @@ serve(async (req) => {
         systemPrompt = 'You are a helpful assistant for creating professional certificate content. Provide clear, concise, and professional responses.';
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt }
+        contents: [
+          {
+            parts: [
+              {
+                text: `${systemPrompt}\n\nUser request: ${prompt}`
+              }
+            ]
+          }
         ],
-        max_tokens: 200,
-        temperature: 0.7,
+        generationConfig: {
+          maxOutputTokens: 200,
+          temperature: 0.7,
+        }
       }),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('OpenAI API error:', error);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error('Gemini API error:', error);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const generatedText = data.choices[0].message.content.trim();
+    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'No response generated';
 
     return new Response(JSON.stringify({ 
       success: true, 
