@@ -18,13 +18,21 @@ const Verify = () => {
     if (!verificationCode.trim()) return;
     
     setIsVerifying(true);
+    setVerificationResult(null); // Clear previous results
     
     try {
-      const { data: certificate, error } = await supabase
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
+      });
+
+      const verifyPromise = supabase
         .from("certificates")
         .select("*")
         .eq("verification_id", verificationCode.trim())
         .maybeSingle();
+
+      const { data: certificate, error } = await Promise.race([verifyPromise, timeoutPromise]) as any;
 
       if (error) {
         throw error;
@@ -54,10 +62,14 @@ const Verify = () => {
       }
     } catch (error: any) {
       console.error("Verification error:", error);
+      const errorMessage = error.message === 'Request timeout' 
+        ? "Request timed out. Please check your connection and try again."
+        : "Failed to verify certificate. Please try again.";
+      
       setVerificationResult({
         isValid: false,
         certificate: null,
-        error: "Failed to verify certificate. Please try again."
+        error: errorMessage
       });
     } finally {
       setIsVerifying(false);
@@ -69,12 +81,24 @@ const Verify = () => {
   };
 
   const handleQRScanResult = (result: string) => {
-    setVerificationCode(result);
+    console.log("QR scan result:", result);
+    
+    // Extract verification ID from URL if it's a full URL
+    let verificationId = result;
+    if (result.includes('/certificate/')) {
+      const parts = result.split('/certificate/');
+      if (parts.length > 1) {
+        verificationId = parts[1];
+      }
+    }
+    
+    setVerificationCode(verificationId);
     setShowQRScanner(false);
-    // Auto-verify after scanning
+    
+    // Auto-verify after scanning with a slight delay
     setTimeout(() => {
       handleVerify();
-    }, 500);
+    }, 300);
   };
 
   return (

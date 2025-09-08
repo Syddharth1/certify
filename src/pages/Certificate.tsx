@@ -62,7 +62,10 @@ const Certificate = () => {
   }, [verificationId]);
 
   const handleDownloadPDF = () => {
-    if (!certificate) return;
+    if (!certificate || !certificate.certificate_data?.imageData) {
+      toast.error("Certificate image data not available");
+      return;
+    }
 
     try {
       const pdf = new jsPDF({
@@ -71,16 +74,19 @@ const Certificate = () => {
         format: [800, 600]
       });
 
-      // Remove data:image/png;base64, prefix if present
-      const imageData = certificate.certificate_data?.imageData?.replace(/^data:image\/[a-z]+;base64,/, '') || '';
+      // Handle both formats: with and without data URL prefix
+      let imageData = certificate.certificate_data.imageData;
+      if (imageData.startsWith('data:image/')) {
+        imageData = imageData.split(',')[1];
+      }
       
-      pdf.addImage(imageData, 'PNG', 0, 0, 800, 600);
+      pdf.addImage(`data:image/png;base64,${imageData}`, 'PNG', 0, 0, 800, 600);
       pdf.save(`${certificate.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
       
       toast.success("Certificate downloaded successfully!");
     } catch (error) {
       console.error("Error generating PDF:", error);
-      toast.error("Failed to download certificate");
+      toast.error("Failed to download certificate. Please try again.");
     }
   };
 
@@ -169,11 +175,22 @@ const Certificate = () => {
 
               {/* Certificate Image */}
               <div className="text-center mb-8">
-              <img
-                src={certificate.certificate_data?.imageData || ''}
-                alt="Certificate"
-                className="max-w-full h-auto border-2 border-border rounded-lg shadow-lg mx-auto"
-              />
+                {certificate.certificate_data?.imageData ? (
+                  <img
+                    src={certificate.certificate_data.imageData}
+                    alt="Certificate"
+                    className="max-w-full h-auto border-2 border-border rounded-lg shadow-lg mx-auto"
+                    onError={(e) => {
+                      console.error("Failed to load certificate image");
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="p-8 border-2 border-dashed border-border rounded-lg">
+                    <p className="text-muted-foreground">Certificate image not available</p>
+                  </div>
+                )}
               </div>
 
               {/* Download Button */}

@@ -55,7 +55,8 @@ const handler = async (req: Request): Promise<Response> => {
     // Use provided certificate ID or generate new one
     const verificationId = certificateId || `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     
-    // Save certificate to database
+    // Save certificate to database with consistent data format
+    const imageDataUrl = `data:image/png;base64,${certificateData}`;
     const { data: certificate, error: saveError } = await supabase
       .from("certificates")
       .insert({
@@ -64,8 +65,12 @@ const handler = async (req: Request): Promise<Response> => {
         recipient_name: recipientName,
         recipient_email: recipientEmail,
         verification_id: verificationId,
-        certificate_data: { imageData: `data:image/png;base64,${certificateData}` },
-        certificate_url: certificateData // Store the image data
+        certificate_data: { 
+          imageData: imageDataUrl,
+          format: 'png',
+          timestamp: new Date().toISOString()
+        },
+        certificate_url: `https://7aae85cb-230b-485f-a1f9-16cb028e5038.lovableproject.com/certificate/${verificationId}`
       })
       .select()
       .single();
