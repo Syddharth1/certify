@@ -39,41 +39,17 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch certificates count
-      const { count: certificatesCount } = await supabase
-        .from("certificates")
-        .select("*", { count: "exact", head: true });
+      // Call edge function to get all dashboard data in one request
+      const { data, error } = await supabase.functions.invoke('get-dashboard-stats');
 
-      // Fetch templates count
-      const { count: templatesCount } = await supabase
-        .from("templates")
-        .select("*", { count: "exact", head: true });
+      if (error) throw error;
 
-      // Fetch users count
-      const { count: usersCount } = await supabase
-        .from("profiles")
-        .select("*", { count: "exact", head: true });
-
-      // Fetch elements count
-      const { count: elementsCount } = await supabase
-        .from("elements")
-        .select("*", { count: "exact", head: true });
-
-      // Fetch recent certificates
-      const { data: certificates } = await supabase
-        .from("certificates")
-        .select("id, title, recipient_name, created_at")
-        .order("created_at", { ascending: false })
-        .limit(5);
-
-      setStats({
-        totalCertificates: certificatesCount || 0,
-        totalTemplates: templatesCount || 0,
-        totalUsers: usersCount || 0,
-        totalElements: elementsCount || 0
-      });
-
-      setRecentCertificates(certificates || []);
+      if (data.success) {
+        setStats(data.stats);
+        setRecentCertificates(data.recentCertificates);
+      } else {
+        throw new Error(data.error || 'Failed to fetch dashboard data');
+      }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       toast.error("Failed to load dashboard data");

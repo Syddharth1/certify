@@ -10,6 +10,12 @@ max_rows = 1000
 [functions.send-certificate]
 verify_jwt = true
 
+[functions.get-dashboard-stats]
+verify_jwt = true
+
+[functions.get-user-certificates]
+verify_jwt = true
+
 [db]
 shadow_port = 54322
 major_version = 15

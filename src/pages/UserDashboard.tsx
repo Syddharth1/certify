@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import Navigation from "@/components/Navigation";
 
 const UserDashboard = () => {
@@ -23,23 +24,20 @@ const UserDashboard = () => {
 
   const fetchCertificates = async () => {
     try {
-      // Fetch certificates created by the user
-      const { data: created } = await supabase
-        .from("certificates")
-        .select("*")
-        .eq("user_id", user?.id);
+      // Call edge function to get all certificates in one request
+      const { data, error } = await supabase.functions.invoke('get-user-certificates');
 
-      // Fetch certificates received by the user (by email)
-      const { data: received } = await supabase
-        .from("certificates")
-        .select("*")
-        .eq("recipient_email", user?.email)
-        .neq("user_id", user?.id); // Exclude certificates created by the user
+      if (error) throw error;
 
-      setMyCertificates(created || []);
-      setReceivedCertificates(received || []);
+      if (data.success) {
+        setMyCertificates(data.created || []);
+        setReceivedCertificates(data.received || []);
+      } else {
+        throw new Error(data.error || 'Failed to fetch certificates');
+      }
     } catch (error) {
       console.error("Error fetching certificates:", error);
+      toast.error("Failed to load certificates");
     } finally {
       setLoading(false);
     }
