@@ -24,20 +24,29 @@ const UserDashboard = () => {
 
   const fetchCertificates = async () => {
     try {
+      console.log("Fetching user certificates...");
+      
       // Call edge function to get all certificates in one request
       const { data, error } = await supabase.functions.invoke('get-user-certificates');
 
-      if (error) throw error;
+      console.log("Function response:", { data, error });
 
-      if (data.success) {
+      if (error) {
+        console.error("Function invocation error:", error);
+        throw error;
+      }
+
+      if (data?.success) {
+        console.log("Certificates loaded successfully:", data);
         setMyCertificates(data.created || []);
         setReceivedCertificates(data.received || []);
       } else {
-        throw new Error(data.error || 'Failed to fetch certificates');
+        console.error("Function returned error:", data?.error);
+        throw new Error(data?.error || 'Failed to fetch certificates');
       }
     } catch (error) {
       console.error("Error fetching certificates:", error);
-      toast.error("Failed to load certificates");
+      toast.error(`Failed to load certificates: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }

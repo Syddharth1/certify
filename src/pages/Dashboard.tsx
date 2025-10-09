@@ -39,20 +39,29 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
+      console.log("Fetching dashboard stats...");
+      
       // Call edge function to get all dashboard data in one request
       const { data, error } = await supabase.functions.invoke('get-dashboard-stats');
 
-      if (error) throw error;
+      console.log("Dashboard function response:", { data, error });
 
-      if (data.success) {
+      if (error) {
+        console.error("Dashboard function error:", error);
+        throw error;
+      }
+
+      if (data?.success) {
+        console.log("Dashboard data loaded successfully");
         setStats(data.stats);
         setRecentCertificates(data.recentCertificates);
       } else {
-        throw new Error(data.error || 'Failed to fetch dashboard data');
+        console.error("Dashboard function returned error:", data?.error);
+        throw new Error(data?.error || 'Failed to fetch dashboard data');
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      toast.error("Failed to load dashboard data");
+      toast.error(`Failed to load dashboard data: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
