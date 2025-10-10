@@ -30,15 +30,32 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { data: userRole } = await supabaseClient
+    console.log('Checking admin role for user:', user.id);
+
+    const { data: userRole, error: roleError } = await supabaseClient
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (userRole?.role !== 'admin') {
+    console.log('User role query result:', { userRole, roleError });
+
+    if (roleError) {
+      console.error('Error fetching user role:', roleError);
+      throw new Error('Failed to verify user role');
+    }
+
+    if (!userRole) {
+      console.error('No role found for user:', user.id);
+      throw new Error('User has no role assigned. Please contact an administrator.');
+    }
+
+    if (userRole.role !== 'admin') {
+      console.error('User is not admin:', userRole.role);
       throw new Error('Admin access required');
     }
+
+    console.log('Admin verification successful');
 
     // Execute all queries in parallel for performance
     const [
