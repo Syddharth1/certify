@@ -70,7 +70,7 @@ const handler = async (req: Request): Promise<Response> => {
           format: 'png',
           timestamp: new Date().toISOString()
         },
-        certificate_url: `https://7aae85cb-230b-485f-a1f9-16cb028e5038.lovableproject.com/certificate/${verificationId}`
+        certificate_url: `https://certify-cert.vercel.app/certificate/${verificationId}`
       })
       .select()
       .single();
@@ -82,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Certificate saved successfully:", certificate.id);
 
     // Generate QR code for verification
-    const verificationUrl = `https://7aae85cb-230b-485f-a1f9-16cb028e5038.lovableproject.com/certificate/${verificationId}`;
+    const verificationUrl = `https://certify-cert.vercel.app/certificate/${verificationId}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(verificationUrl)}`;
 
     // Send email using Resend

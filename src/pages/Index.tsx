@@ -64,7 +64,7 @@ const Index = () => {
       <Navigation />
       
       {/* Enhanced Hero Section */}
-      <section className="bg-gradient-hero text-white py-32">
+      <section className="bg-[linear-gradient(0deg,_rgba(63,94,251,1)_0%,_rgba(252,70,107,1)_100%)] text-white py-32">
         <div className="container mx-auto px-8 text-center">
           <div className="max-w-5xl mx-auto">
             <h1 className="text-7xl font-display font-bold mb-8 leading-tight">
