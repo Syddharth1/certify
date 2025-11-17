@@ -54,7 +54,7 @@ const UserDashboard = () => {
 
   const handleViewCertificate = (cert: any) => {
     if (cert.certificate_url) {
-      window.open(`/certificate/${cert.verification_id}`, '_blank');
+      window.open(`https://certify-cert.vercel.app/certificate/${cert.verification_id}`, '_blank');
     } else if (cert.certificate_data?.imageData) {
       // Ensure the image data has the proper data URL format
       let imageData = cert.certificate_data.imageData;
