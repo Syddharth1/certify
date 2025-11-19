@@ -247,7 +247,7 @@ const Editor = () => {
       const certId = generateCertificateId();
       const verificationUrl = `https://certify-cert.vercel.app/certificate/${certId}`;
       const qrCodeUrl = await QRCodeGenerator.toDataURL(verificationUrl, {
-        width: 120,
+        width: 300,
         margin: 1,
         color: {
           dark: '#000000',
@@ -255,21 +255,77 @@ const Editor = () => {
         }
       });
 
-      util.loadImage(qrCodeUrl, { crossOrigin: 'anonymous' }).then((img) => {
-        const qrCode = new FabricImage(img, {
-          left: 650,
-          top: 450,
-          scaleX: 1,
-          scaleY: 1,
-        });
-        fabricCanvas.add(qrCode);
-        fabricCanvas.renderAll();
-      }).catch((error) => {
-        console.error("Error loading QR code:", error);
-        toast.error("Failed to load QR code image");
-      });
+      // Create a canvas to composite QR code with logo
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-      toast("QR code added! Recipients can scan to verify the certificate.");
+      const qrImage = new Image();
+      qrImage.crossOrigin = 'anonymous';
+      
+      qrImage.onload = async () => {
+        canvas.width = qrImage.width;
+        canvas.height = qrImage.height;
+        
+        // Draw QR code
+        ctx.drawImage(qrImage, 0, 0);
+        
+        // Load and draw logo in center
+        const logo = new Image();
+        logo.crossOrigin = 'anonymous';
+        
+        logo.onload = () => {
+          const logoSize = canvas.width * 0.2; // Logo is 20% of QR code size
+          const logoX = (canvas.width - logoSize) / 2;
+          const logoY = (canvas.height - logoSize) / 2;
+          
+          // Draw white background circle for logo
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(canvas.width / 2, canvas.height / 2, logoSize * 0.6, 0, 2 * Math.PI);
+          ctx.fill();
+          
+          // Draw logo
+          ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+          
+          // Convert to data URL and add to fabric canvas
+          const finalDataUrl = canvas.toDataURL();
+          
+          util.loadImage(finalDataUrl, { crossOrigin: 'anonymous' }).then((img) => {
+            const qrCode = new FabricImage(img, {
+              left: 650,
+              top: 450,
+              scaleX: 0.4,
+              scaleY: 0.4,
+            });
+            fabricCanvas.add(qrCode);
+            fabricCanvas.renderAll();
+            toast.success("QR code with logo added!");
+          }).catch((error) => {
+            console.error("Error loading final QR code:", error);
+            toast.error("Failed to load QR code image");
+          });
+        };
+        
+        logo.onerror = () => {
+          // If logo fails to load, just use the QR code without logo
+          util.loadImage(qrCodeUrl, { crossOrigin: 'anonymous' }).then((img) => {
+            const qrCode = new FabricImage(img, {
+              left: 650,
+              top: 450,
+              scaleX: 0.4,
+              scaleY: 0.4,
+            });
+            fabricCanvas.add(qrCode);
+            fabricCanvas.renderAll();
+            toast.success("QR code added!");
+          });
+        };
+        
+        logo.src = '/logo.png';
+      };
+      
+      qrImage.src = qrCodeUrl;
     } catch (error) {
       console.error("QR code generation error:", error);
       toast.error("Failed to generate QR code");
