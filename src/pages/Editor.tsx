@@ -245,7 +245,7 @@ const Editor = () => {
 
     try {
       const certId = generateCertificateId();
-      const verificationUrl = `https://7aae85cb-230b-485f-a1f9-16cb028e5038.lovableproject.com/certificate/${certId}`;
+      const verificationUrl = `https://certify-cert.vercel.app/certificate/${certId}`;
       const qrCodeUrl = await QRCodeGenerator.toDataURL(verificationUrl, {
         width: 120,
         margin: 1,
