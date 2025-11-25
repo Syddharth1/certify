@@ -111,7 +111,14 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'No response generated';
+    console.log('Gemini API response:', JSON.stringify(data, null, 2));
+    
+    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    
+    if (!generatedText) {
+      console.error('No text generated. Full response:', JSON.stringify(data));
+      throw new Error('No response generated from AI model');
+    }
 
     // Log successful request
     await supabaseClient
