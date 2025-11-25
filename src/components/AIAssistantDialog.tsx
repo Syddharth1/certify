@@ -81,29 +81,47 @@ const AIAssistantDialog: React.FC<AIAssistantDialogProps> = ({ onSuggestion }) =
       console.error('AI generation error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate content';
       
-      // Check if it's a quota error
-      if (errorMessage.includes('quota') || errorMessage.includes('429')) {
+      // Check if it's a rate limit error
+      if (errorMessage.includes('Rate limit') || errorMessage.includes('429')) {
         toast({
-          title: "OpenAI API Quota Exceeded",
-          description: "Please check your OpenAI billing and add credits to your account.",
+          title: "Rate Limit Exceeded",
+          description: "You can make up to 10 AI requests per hour. Please try again later.",
           variant: "destructive",
         });
+        
+        const errorResponseMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: "You've reached the hourly rate limit of 10 AI requests. Please wait a bit and try again. This limit helps ensure fair usage and manage API costs."
+        };
+        setMessages(prev => [...prev, errorResponseMessage]);
+      } else if (errorMessage.includes('quota')) {
+        toast({
+          title: "API Quota Exceeded",
+          description: "Please check your API billing and add credits to your account.",
+          variant: "destructive",
+        });
+        
+        const errorResponseMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: "I'm sorry, but it looks like the API quota has been exceeded. Please check your API account billing and add credits to continue using the AI assistant."
+        };
+        setMessages(prev => [...prev, errorResponseMessage]);
       } else {
         toast({
           title: "Error",
           description: errorMessage,
           variant: "destructive",
         });
+        
+        const errorResponseMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: "I apologize, but I encountered an error. Please try again or check your API configuration."
+        };
+        setMessages(prev => [...prev, errorResponseMessage]);
       }
-      
-      const errorResponseMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: errorMessage.includes('quota') 
-          ? "I'm sorry, but it looks like your OpenAI API quota has been exceeded. Please check your OpenAI account billing and add credits to continue using the AI assistant."
-          : "I apologize, but I encountered an error. Please try again or check your API configuration."
-      };
-      setMessages(prev => [...prev, errorResponseMessage]);
     } finally {
       setIsLoading(false);
     }
