@@ -98,7 +98,7 @@ serve(async (req) => {
           }
         ],
         generationConfig: {
-          maxOutputTokens: 200,
+          maxOutputTokens: 1000,
           temperature: 0.7,
         }
       }),
