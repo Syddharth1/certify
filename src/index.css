@@ -189,73 +189,97 @@
     @apply bg-card border border-border rounded-xl overflow-hidden transition-smooth hover:shadow-medium hover:scale-105;
   }
 
-  /* Color Bends Background */
+  /* Color Bends Background - Inspired by Reactbits.dev */
   .color-bends-bg {
     position: relative;
     background: #0a0a14;
     overflow: hidden;
   }
 
-  .color-bends-bg::before,
-  .color-bends-bg::after,
-  .color-bends-bg .color-bend-1,
-  .color-bends-bg .color-bend-2 {
+  .color-bends-bg::before {
     content: '';
     position: absolute;
-    border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.4;
-    animation: float 20s ease-in-out infinite;
-  }
-
-  .color-bends-bg::before {
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, hsl(var(--color-bends-cyan)) 0%, transparent 70%);
-    top: -200px;
-    left: -100px;
-    animation-delay: 0s;
+    inset: 0;
+    background: 
+      linear-gradient(125deg, transparent 30%, rgba(0, 255, 255, 0.15) 45%, rgba(255, 0, 255, 0.15) 55%, transparent 70%),
+      linear-gradient(235deg, transparent 30%, rgba(255, 100, 200, 0.12) 45%, rgba(100, 200, 255, 0.12) 55%, transparent 70%),
+      linear-gradient(45deg, transparent 35%, rgba(150, 100, 255, 0.1) 48%, rgba(255, 150, 100, 0.1) 52%, transparent 65%);
+    background-size: 200% 200%;
+    animation: color-bends-flow 20s ease-in-out infinite;
+    filter: blur(80px);
   }
 
   .color-bends-bg::after {
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, hsl(var(--color-bends-pink)) 0%, transparent 70%);
-    top: 50%;
-    right: -150px;
-    animation-delay: 5s;
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 20% 30%, rgba(0, 200, 255, 0.2) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(255, 0, 200, 0.2) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(150, 100, 255, 0.15) 0%, transparent 60%);
+    animation: color-bends-pulse 15s ease-in-out infinite;
+    filter: blur(100px);
   }
 
-  .color-bends-bg .color-bend-1 {
-    width: 550px;
-    height: 550px;
-    background: radial-gradient(circle, hsl(var(--color-bends-purple)) 0%, transparent 70%);
-    bottom: -100px;
-    left: 30%;
-    animation-delay: 10s;
-  }
-
-  .color-bends-bg .color-bend-2 {
-    width: 450px;
-    height: 450px;
-    background: radial-gradient(circle, hsl(var(--color-bends-cyan)) 0%, transparent 70%);
-    top: 20%;
-    left: 60%;
-    animation-delay: 15s;
-  }
-
-  @keyframes float {
+  @keyframes color-bends-flow {
     0%, 100% {
-      transform: translate(0, 0) scale(1);
+      background-position: 0% 50%, 100% 50%, 50% 0%;
+      opacity: 0.8;
     }
     25% {
-      transform: translate(50px, -50px) scale(1.1);
+      background-position: 50% 0%, 50% 100%, 100% 50%;
+      opacity: 1;
     }
     50% {
-      transform: translate(-30px, 30px) scale(0.9);
+      background-position: 100% 50%, 0% 50%, 50% 100%;
+      opacity: 0.9;
     }
     75% {
-      transform: translate(30px, 50px) scale(1.05);
+      background-position: 50% 100%, 50% 0%, 0% 50%;
+      opacity: 1;
     }
+  }
+
+  @keyframes color-bends-pulse {
+    0%, 100% {
+      opacity: 0.6;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.1);
+    }
+  }
+
+  /* Infinite Tech Slider */
+  .tech-slider {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .tech-slider-track {
+    display: flex;
+    gap: 2rem;
+    animation: infinite-scroll 30s linear infinite;
+    width: fit-content;
+  }
+
+  .tech-slider-track:hover {
+    animation-play-state: paused;
+  }
+
+  @keyframes infinite-scroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .tech-card {
+    min-width: 250px;
+    flex-shrink: 0;
   }
 }
