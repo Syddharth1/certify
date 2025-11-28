@@ -1,4 +1,4 @@
-import { Award, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,10 +10,10 @@ const Navigation = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur border-b border-border">
       <div className="container mx-auto px-8 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Award className="h-8 w-8 text-primary" />
+          <Link to="/" className="flex items-center gap-2">
+            <img src="/logo.png" alt="Certify Logo" className="h-8 w-8" />
             <span className="text-xl font-display font-bold">Certify</span>
-          </div>
+          </Link>
           
           <div className="hidden md:flex items-center gap-6">
             <Link to="/" className="text-foreground hover:text-primary transition-colors">Home</Link>
