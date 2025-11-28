@@ -63,9 +63,11 @@ const Index = () => {
     <div className="min-h-screen">
       <Navigation />
       
-      {/* Enhanced Hero Section */}
-      <section className="bg-[linear-gradient(0deg,_rgba(63,94,251,1)_0%,_rgba(252,70,107,1)_100%)] text-white py-32">
-        <div className="container mx-auto px-8 text-center">
+      {/* Enhanced Hero Section with Color Bends Background */}
+      <section className="color-bends-bg text-white py-32 relative">
+        <div className="color-bend-1"></div>
+        <div className="color-bend-2"></div>
+        <div className="container mx-auto px-8 text-center relative z-10">
           <div className="max-w-5xl mx-auto">
             <h1 className="text-7xl font-display font-bold mb-8 leading-tight">
               Create Professional Certificates in
@@ -232,9 +234,11 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Call to Action */}
-      <section className="py-24 bg-gradient-primary text-white">
-        <div className="container mx-auto px-8 text-center">
+      {/* Call to Action with Color Bends Background */}
+      <section className="py-24 color-bends-bg text-white relative">
+        <div className="color-bend-1"></div>
+        <div className="color-bend-2"></div>
+        <div className="container mx-auto px-8 text-center relative z-10">
           <div className="max-w-3xl mx-auto">
             <h2 className="text-4xl font-display font-bold mb-6">Ready to Create Amazing Certificates?</h2>
             <p className="text-xl opacity-90 mb-8">
