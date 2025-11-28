@@ -1,7 +1,6 @@
 import { Award, Shield, Sparkles, Users, Code, FileCheck, QrCode, Palette, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -65,8 +64,6 @@ const Index = () => {
       
       {/* Enhanced Hero Section with Color Bends Background */}
       <section className="color-bends-bg text-white py-32 relative">
-        <div className="color-bend-1"></div>
-        <div className="color-bend-2"></div>
         <div className="container mx-auto px-8 text-center relative z-10">
           <div className="max-w-5xl mx-auto">
             <h1 className="text-7xl font-display font-bold mb-8 leading-tight">
@@ -170,7 +167,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Technologies Section */}
+      {/* Technologies Section - Infinite Slider */}
       <section className="py-24 bg-background">
         <div className="container mx-auto px-8">
           <div className="text-center mb-16">
@@ -179,32 +176,33 @@ const Index = () => {
               Powered by cutting-edge technologies for optimal performance and reliability
             </p>
           </div>
-          <div className="max-w-4xl mx-auto">
-            <Carousel 
-              opts={{
-                align: "start",
-                loop: true,
-              }}
-              className="w-full"
-            >
-              <CarouselContent>
-                {technologies.map((tech, index) => (
-                  <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
-                    <Card className="h-full group hover:shadow-lg transition-all duration-300 hover:scale-105">
-                      <CardContent className="p-6 text-center h-full flex flex-col justify-center">
-                        <div className="bg-gradient-primary rounded-lg w-16 h-16 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                          <Code className="h-8 w-8 text-white" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-foreground mb-2">{tech.name}</h3>
-                        <p className="text-muted-foreground text-sm">{tech.description}</p>
-                      </CardContent>
-                    </Card>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious className="left-0" />
-              <CarouselNext className="right-0" />
-            </Carousel>
+          <div className="tech-slider">
+            <div className="tech-slider-track">
+              {/* First set of technologies */}
+              {technologies.map((tech, index) => (
+                <Card key={`tech-1-${index}`} className="tech-card group hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  <CardContent className="p-6 text-center h-full flex flex-col justify-center">
+                    <div className="bg-gradient-primary rounded-lg w-16 h-16 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                      <Code className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground mb-2">{tech.name}</h3>
+                    <p className="text-muted-foreground text-sm">{tech.description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+              {/* Duplicate set for seamless infinite scroll */}
+              {technologies.map((tech, index) => (
+                <Card key={`tech-2-${index}`} className="tech-card group hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  <CardContent className="p-6 text-center h-full flex flex-col justify-center">
+                    <div className="bg-gradient-primary rounded-lg w-16 h-16 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                      <Code className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground mb-2">{tech.name}</h3>
+                    <p className="text-muted-foreground text-sm">{tech.description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -236,8 +234,6 @@ const Index = () => {
 
       {/* Call to Action with Color Bends Background */}
       <section className="py-24 color-bends-bg text-white relative">
-        <div className="color-bend-1"></div>
-        <div className="color-bend-2"></div>
         <div className="container mx-auto px-8 text-center relative z-10">
           <div className="max-w-3xl mx-auto">
             <h2 className="text-4xl font-display font-bold mb-6">Ready to Create Amazing Certificates?</h2>
