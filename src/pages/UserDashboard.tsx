@@ -9,6 +9,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Navigation from "@/components/Navigation";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { ListItemSkeleton } from "@/components/LoadingSkeleton";
+import { SkipToContent } from "@/components/SkipToContent";
 
 const UserDashboard = () => {
   const { user } = useAuth();
@@ -94,10 +97,13 @@ const UserDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
+    <SkipToContent />
+    <div className="min-h-screen bg-background" id="main-content">
       <Navigation />
       
       <div className="container mx-auto px-8 pt-24 pb-12">
+        <Breadcrumb />
         <div className="mb-8">
           <h1 className="text-3xl font-display font-bold mb-2">My Profile</h1>
           <p className="text-muted-foreground">
@@ -166,7 +172,11 @@ const UserDashboard = () => {
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <div className="text-center py-8">Loading...</div>
+                  <div className="space-y-4">
+                    <ListItemSkeleton />
+                    <ListItemSkeleton />
+                    <ListItemSkeleton />
+                  </div>
                 ) : myCertificates.length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">
@@ -211,7 +221,11 @@ const UserDashboard = () => {
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <div className="text-center py-8">Loading...</div>
+                  <div className="space-y-4">
+                    <ListItemSkeleton />
+                    <ListItemSkeleton />
+                    <ListItemSkeleton />
+                  </div>
                 ) : receivedCertificates.length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground">
@@ -257,6 +271,7 @@ const UserDashboard = () => {
         </Tabs>
       </div>
     </div>
+    </>
   );
 };
 

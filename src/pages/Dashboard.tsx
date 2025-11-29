@@ -11,6 +11,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { DashboardStatSkeleton, ListItemSkeleton } from "@/components/LoadingSkeleton";
+import { ProductTour } from "@/components/ProductTour";
+import { SkipToContent } from "@/components/SkipToContent";
 
 const Dashboard = () => {
   const { isAdmin } = useAuth();
@@ -174,15 +178,50 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
-        <div>Loading dashboard...</div>
+      <>
+      <SkipToContent />
+      <div className="min-h-screen bg-gradient-subtle">
+        <div className="container mx-auto p-8">
+          <Breadcrumb />
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-4xl font-display font-bold text-foreground mb-2">
+                Admin Dashboard
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                Loading dashboard data...
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" data-tour="stats">
+            <DashboardStatSkeleton />
+            <DashboardStatSkeleton />
+            <DashboardStatSkeleton />
+            <DashboardStatSkeleton />
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Loading...</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4" data-tour="recent">
+              <ListItemSkeleton />
+              <ListItemSkeleton />
+              <ListItemSkeleton />
+            </CardContent>
+          </Card>
+        </div>
       </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
+    <>
+    <SkipToContent />
+    <ProductTour tourKey="dashboard" />
+    <div className="min-h-screen bg-gradient-subtle" id="main-content">
       <div className="container mx-auto p-8">
+        <Breadcrumb />
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -200,7 +239,7 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" data-tour="stats">
           <Card className="certificate-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -276,7 +315,7 @@ const Dashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-4" data-tour="recent">
                   {recentCertificates.length > 0 ? (
                     recentCertificates.map((cert: any) => (
                       <div key={cert.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
@@ -470,6 +509,7 @@ const Dashboard = () => {
         </Tabs>
       </div>
     </div>
+    </>
   );
 };
 

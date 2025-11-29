@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Filter, Star, Eye, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,9 +6,19 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Navigation from "@/components/Navigation";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { CertificateCardSkeleton } from "@/components/LoadingSkeleton";
+import { SkipToContent } from "@/components/SkipToContent";
 
 const Templates = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate loading templates
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
   
   const templates = [
     {
@@ -75,9 +85,11 @@ const Templates = () => {
 
   return (
     <>
+      <SkipToContent />
       <Navigation />
-      <div className="min-h-screen bg-gradient-subtle pt-20">
+      <div className="min-h-screen bg-gradient-subtle pt-20" id="main-content">
         <div className="container mx-auto p-8">
+        <Breadcrumb />
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-5xl font-display font-bold text-foreground mb-4">
@@ -116,7 +128,17 @@ const Templates = () => {
           </TabsList>
 
           <TabsContent value="All" className="mt-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <CertificateCardSkeleton />
+                <CertificateCardSkeleton />
+                <CertificateCardSkeleton />
+                <CertificateCardSkeleton />
+                <CertificateCardSkeleton />
+                <CertificateCardSkeleton />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTemplates.map((template) => (
                 <Card key={template.id} className="certificate-card group">
                   <CardContent className="p-0">
@@ -167,6 +189,7 @@ const Templates = () => {
                 </Card>
               ))}
             </div>
+            )}
           </TabsContent>
         </Tabs>
 

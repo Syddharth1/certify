@@ -43,6 +43,10 @@ import QRCodeGenerator from "qrcode";
 import { ElementManager } from "@/components/ElementManager";
 import { SendCertificateDialog } from "@/components/SendCertificateDialog";
 import AIAssistantDialog from "@/components/AIAssistantDialog";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { ProductTour } from "@/components/ProductTour";
+import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
+import { SkipToContent } from "@/components/SkipToContent";
 
 const Editor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -56,6 +60,8 @@ const Editor = () => {
   const [certificateTitle, setCertificateTitle] = useState("Certificate of Achievement");
   const [message, setMessage] = useState("This certifies that the above named person has successfully completed the requirements.");
   const [senderName, setSenderName] = useState("");
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
+  const [canvasZoom, setCanvasZoom] = useState(1);
 
   const handleAISuggestion = (text: string, type: 'title' | 'message') => {
     if (type === 'title') {
@@ -122,6 +128,57 @@ const Editor = () => {
       canvas.dispose();
     };
   }, []);
+
+  // Auto-save functionality
+  useEffect(() => {
+    if (!fabricCanvas) return;
+
+    const autoSaveInterval = setInterval(() => {
+      const objects = fabricCanvas.getObjects();
+      if (objects.length > 0) {
+        setAutoSaveStatus("saving");
+        try {
+          const canvasData = JSON.stringify(fabricCanvas.toJSON());
+          localStorage.setItem('savedCertificate', canvasData);
+          setAutoSaveStatus("saved");
+        } catch (error) {
+          console.error("Auto-save error:", error);
+          setAutoSaveStatus("unsaved");
+        }
+      }
+    }, 30000); // Auto-save every 30 seconds
+
+    return () => clearInterval(autoSaveInterval);
+  }, [fabricCanvas]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent shortcuts when typing in input fields
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        handleRedo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      } else if (e.key === 'Delete' && selectedObject) {
+        e.preventDefault();
+        handleDeleteSelected();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        fabricCanvas?.discardActiveObject();
+        fabricCanvas?.renderAll();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fabricCanvas, selectedObject, historyIndex, canvasHistory]);
 
   const handleToolClick = (tool: typeof activeTool) => {
     setActiveTool(tool);
@@ -616,11 +673,40 @@ const Editor = () => {
     fabricCanvas.renderAll();
     toast("Moved backward");
   };
-    return (
+
+  const handleZoomIn = () => {
+    if (!fabricCanvas) return;
+    const newZoom = Math.min(canvasZoom + 0.1, 3);
+    setCanvasZoom(newZoom);
+    fabricCanvas.setZoom(newZoom);
+    fabricCanvas.renderAll();
+  };
+
+  const handleZoomOut = () => {
+    if (!fabricCanvas) return;
+    const newZoom = Math.max(canvasZoom - 0.1, 0.5);
+    setCanvasZoom(newZoom);
+    fabricCanvas.setZoom(newZoom);
+    fabricCanvas.renderAll();
+  };
+
+  const handleZoomReset = () => {
+    if (!fabricCanvas) return;
+    setCanvasZoom(1);
+    fabricCanvas.setZoom(1);
+    fabricCanvas.renderAll();
+  };
+
+  return (
+    <>
+      <SkipToContent />
+      <ProductTour tourKey="editor" />
+      <KeyboardShortcuts />
       <div className="min-h-screen bg-gradient-subtle">
         <div className="flex h-screen">
         <div className="w-80 bg-card border-r border-border overflow-y-auto">
           <div className="p-6">
+            <Breadcrumb />
             <h2 className="text-xl font-display font-bold mb-6">Certificate Editor</h2>
             
             <Tabs defaultValue="tools" className="space-y-4">
@@ -876,7 +962,7 @@ const Editor = () => {
           {/* Top Toolbar */}
           <div className="bg-card border-b border-border p-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2" data-tour="tools">
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -974,8 +1060,9 @@ const Editor = () => {
             </div>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
