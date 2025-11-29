@@ -5,6 +5,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { CaseStudies } from "@/components/CaseStudies";
+import { SkipToContent } from "@/components/SkipToContent";
 
 const Index = () => {
   const { user } = useAuth();
@@ -87,7 +89,9 @@ const Index = () => {
   ];
   
   return (
-    <div className="min-h-screen">
+    <>
+    <SkipToContent />
+    <div className="min-h-screen" id="main-content">
       <Navigation />
       
       {/* Enhanced Hero Section with Color Bends Background */}
@@ -315,6 +319,9 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Case Studies Section */}
+      <CaseStudies />
+
       {/* Call to Action with Color Bends Background */}
       <section className="py-32 color-bends-bg text-white relative">
         <div className="container mx-auto px-8 text-center relative z-10">
@@ -335,6 +342,7 @@ const Index = () => {
         </div>
       </section>
     </div>
+    </>
   );
 };
 
