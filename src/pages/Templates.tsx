@@ -9,75 +9,53 @@ import Navigation from "@/components/Navigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { CertificateCardSkeleton } from "@/components/LoadingSkeleton";
 import { SkipToContent } from "@/components/SkipToContent";
+import { TemplatePreviewDialog } from "@/components/TemplatePreviewDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const Templates = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Simulate loading templates
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
+    fetchTemplates();
   }, []);
-  
-  const templates = [
-    {
-      id: 1,
-      title: "Modern Achievement Certificate",
-      category: "Achievement",
-      thumbnail: "https://images.unsplash.com/photo-1581090464777-f3220bbe1b8b?w=400&h=300&fit=crop",
-      isPremium: false,
-      rating: 4.8,
-      downloads: 1234
-    },
-    {
-      id: 2,
-      title: "Professional Training Certificate",
-      category: "Training",
-      thumbnail: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=300&fit=crop",
-      isPremium: true,
-      rating: 4.9,
-      downloads: 856
-    },
-    {
-      id: 3,
-      title: "Excellence Award Certificate",
-      category: "Award",
-      thumbnail: "https://images.unsplash.com/photo-1485833077593-4278bba3f11f?w=400&h=300&fit=crop",
-      isPremium: false,
-      rating: 4.7,
-      downloads: 2341
-    },
-    {
-      id: 4,
-      title: "Corporate Recognition",
-      category: "Corporate",
-      thumbnail: "https://images.unsplash.com/photo-1470813740244-df37b8c1edcb?w=400&h=300&fit=crop",
-      isPremium: true,
-      rating: 4.9,
-      downloads: 567
-    },
-    {
-      id: 5,
-      title: "Academic Achievement",
-      category: "Academic",
-      thumbnail: "https://images.unsplash.com/photo-1488972685288-c3fd157d7c7a?w=400&h=300&fit=crop",
-      isPremium: false,
-      rating: 4.6,
-      downloads: 1789
-    },
-    {
-      id: 6,
-      title: "Leadership Excellence",
-      category: "Leadership",
-      thumbnail: "https://images.unsplash.com/photo-1581090464777-f3220bbe1b8b?w=400&h=300&fit=crop",
-      isPremium: true,
-      rating: 4.8,
-      downloads: 923
-    }
-  ];
 
-  const categories = ["All", "Achievement", "Training", "Award", "Corporate", "Academic", "Leadership"];
+  const fetchTemplates = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('templates')
+        .select('*')
+        .eq('is_public', true)
+        .order('downloads', { ascending: false });
+
+      if (error) throw error;
+      
+      setTemplates(data || []);
+      toast.success(`Loaded ${data?.length || 0} templates`);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+      toast.error('Failed to load templates');
+      setTemplates([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePreview = (template: any) => {
+    setSelectedTemplate(template);
+    setPreviewOpen(true);
+  };
+
+  const handleUseTemplate = (template: any) => {
+    navigate('/editor', { state: { templateData: template.template_data, templateId: template.id } });
+  };
 
   const filteredTemplates = templates.filter(template =>
     template.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -117,49 +95,44 @@ const Templates = () => {
           </Button>
         </div>
 
-        {/* Categories */}
-        <Tabs defaultValue="All" className="mb-8">
-          <TabsList className="grid grid-cols-3 lg:grid-cols-7">
-            {categories.map((category) => (
-              <TabsTrigger key={category} value={category} className="text-xs lg:text-sm">
-                {category}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <TabsContent value="All" className="mt-8">
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <CertificateCardSkeleton />
-                <CertificateCardSkeleton />
-                <CertificateCardSkeleton />
-                <CertificateCardSkeleton />
-                <CertificateCardSkeleton />
-                <CertificateCardSkeleton />
-              </div>
-            ) : (
+        {/* Templates Grid */}
+        <div className="mb-8">
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <CertificateCardSkeleton />
+              <CertificateCardSkeleton />
+              <CertificateCardSkeleton />
+              <CertificateCardSkeleton />
+              <CertificateCardSkeleton />
+              <CertificateCardSkeleton />
+            </div>
+          ) : filteredTemplates.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No templates found. Try adjusting your search.</p>
+            </div>
+          ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTemplates.map((template) => (
                 <Card key={template.id} className="certificate-card group">
                   <CardContent className="p-0">
                     <div className="relative overflow-hidden">
                       <img
-                        src={template.thumbnail}
+                        src={template.thumbnail_url || "https://images.unsplash.com/photo-1581090464777-f3220bbe1b8b?w=400&h=300&fit=crop"}
                         alt={template.title}
                         className="w-full h-48 object-cover transition-transform group-hover:scale-105"
                       />
-                      {template.isPremium && (
+                      {template.is_premium && (
                         <Badge className="absolute top-3 right-3 bg-gradient-gold text-accent-gold-foreground">
                           Premium
                         </Badge>
                       )}
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <div className="flex gap-2">
-                          <Button size="sm" variant="secondary">
+                          <Button size="sm" variant="secondary" onClick={() => handlePreview(template)}>
                             <Eye className="h-4 w-4 mr-1" />
                             Preview
                           </Button>
-                          <Button size="sm" className="btn-hero">
+                          <Button size="sm" className="btn-hero" onClick={() => handleUseTemplate(template)}>
                             Use Template
                           </Button>
                         </div>
@@ -174,13 +147,15 @@ const Templates = () => {
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <Badge variant="outline">{template.category}</Badge>
                         <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1">
-                            <Star className="h-3 w-3 fill-accent-gold text-accent-gold" />
-                            <span>{template.rating}</span>
-                          </div>
+                          {template.rating && (
+                            <div className="flex items-center gap-1">
+                              <Star className="h-3 w-3 fill-accent-gold text-accent-gold" />
+                              <span>{template.rating}</span>
+                            </div>
+                          )}
                           <div className="flex items-center gap-1">
                             <Download className="h-3 w-3" />
-                            <span>{template.downloads}</span>
+                            <span>{template.downloads || 0}</span>
                           </div>
                         </div>
                       </div>
@@ -188,10 +163,9 @@ const Templates = () => {
                   </CardFooter>
                 </Card>
               ))}
-            </div>
-            )}
-          </TabsContent>
-        </Tabs>
+          </div>
+          )}
+        </div>
 
         {/* Call to Action */}
         <div className="text-center mt-16 p-8 bg-gradient-primary rounded-2xl text-white">
@@ -211,6 +185,12 @@ const Templates = () => {
           </Button>
         </div>
         </div>
+        
+        <TemplatePreviewDialog 
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          template={selectedTemplate}
+        />
       </div>
     </>
   );

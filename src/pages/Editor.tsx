@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Canvas as FabricCanvas, Circle, Rect, IText, util, Image as FabricImage, Triangle, Line, Polygon, loadSVGFromString, Group } from "fabric";
 import { 
   Type, 
@@ -50,6 +51,7 @@ import { SkipToContent } from "@/components/SkipToContent";
 
 const Editor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const location = useLocation();
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [activeColor, setActiveColor] = useState("#3b82f6");
   const [activeTool, setActiveTool] = useState<"select" | "text" | "rectangle" | "circle" | "triangle" | "line" | "star" | "pentagon" | "hexagon" | "image">("select");
@@ -119,15 +121,24 @@ const Editor = () => {
 
     setFabricCanvas(canvas);
     
-    // Save initial state
-    setTimeout(() => saveToHistory(), 100);
-    
-    toast("Blank canvas ready! Start creating your design.");
+    // Load template data if provided
+    const templateData = location.state?.templateData;
+    if (templateData) {
+      canvas.loadFromJSON(templateData, () => {
+        canvas.renderAll();
+        saveToHistory();
+        toast.success("Template loaded successfully!");
+      });
+    } else {
+      // Save initial state for blank canvas
+      setTimeout(() => saveToHistory(), 100);
+      toast("Blank canvas ready! Start creating your design.");
+    }
 
     return () => {
       canvas.dispose();
     };
-  }, []);
+  }, [location.state]);
 
   // Auto-save functionality
   useEffect(() => {
