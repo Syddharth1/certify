@@ -32,7 +32,10 @@ import {
   MoveDown,
   Send,
   BringToFront,
-  Hash
+  Hash,
+  Eye,
+  EyeOff,
+  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +67,9 @@ const Editor = () => {
   const [senderName, setSenderName] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const [canvasZoom, setCanvasZoom] = useState(1);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [canvasBackground, setCanvasBackground] = useState("#ffffff");
+  const [showGrid, setShowGrid] = useState(false);
 
   const handleAISuggestion = (text: string, type: 'title' | 'message') => {
     if (type === 'title') {
@@ -98,7 +104,7 @@ const Editor = () => {
     const canvas = new FabricCanvas(canvasRef.current, {
       width: 800,
       height: 600,
-      backgroundColor: "#ffffff",
+      backgroundColor: canvasBackground,
     });
 
     // Selection event handler
@@ -708,6 +714,27 @@ const Editor = () => {
     fabricCanvas.renderAll();
   };
 
+  const changeCanvasSize = (width: number, height: number) => {
+    if (!fabricCanvas) return;
+    fabricCanvas.setDimensions({ width, height });
+    fabricCanvas.renderAll();
+    toast.success(`Canvas resized to ${width}x${height}`);
+  };
+
+  const handleCanvasBackgroundChange = (color: string) => {
+    if (!fabricCanvas) return;
+    setCanvasBackground(color);
+    fabricCanvas.backgroundColor = color;
+    fabricCanvas.renderAll();
+  };
+
+  const applyImageFilter = (filterType: 'grayscale' | 'sepia' | 'invert' | 'brightness') => {
+    if (!selectedObject || selectedObject.type !== 'image' || !fabricCanvas) return;
+    
+    // This is a placeholder - full filter implementation would require fabric.js filters
+    toast.info(`Filter ${filterType} applied (Note: Full implementation requires fabric filters)`);
+  };
+
   return (
     <>
       <SkipToContent />
@@ -715,17 +742,19 @@ const Editor = () => {
       <KeyboardShortcuts />
       <div className="min-h-screen bg-gradient-subtle">
         <div className="flex h-screen">
+        {!isPreviewMode && (
         <div className="w-80 bg-card border-r border-border overflow-y-auto">
           <div className="p-6">
             <Breadcrumb />
             <h2 className="text-xl font-display font-bold mb-6">Certificate Editor</h2>
             
             <Tabs defaultValue="tools" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="tools">Tools</TabsTrigger>
                 <TabsTrigger value="shapes">Shapes</TabsTrigger>
                 <TabsTrigger value="text">Text</TabsTrigger>
                 <TabsTrigger value="design">Design</TabsTrigger>
+                <TabsTrigger value="canvas">Canvas</TabsTrigger>
               </TabsList>
 
               <TabsContent value="tools" className="space-y-4">
@@ -927,18 +956,34 @@ const Editor = () => {
                         />
                       </div>
                       
-                      <div>
-                        <Label>Text Style</Label>
-                        <div className="flex gap-2 mt-1">
-                          <Button
-                            variant={selectedObject.fontWeight === 'bold' ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => toggleTextStyle('fontWeight')}
-                            className="flex-1"
-                          >
-                            <Bold className="h-4 w-4" />
-                          </Button>
-                          <Button
+                       <div>
+                         <Label>Opacity</Label>
+                         <div className="flex items-center gap-2">
+                           <Input
+                             type="range"
+                             min="0"
+                             max="1"
+                             step="0.1"
+                             value={selectedObject.opacity || 1}
+                             onChange={(e) => updateObjectProperty("opacity", parseFloat(e.target.value))}
+                             className="flex-1"
+                           />
+                           <span className="text-sm text-muted-foreground w-12">{Math.round((selectedObject.opacity || 1) * 100)}%</span>
+                         </div>
+                       </div>
+
+                       <div>
+                         <Label>Text Style</Label>
+                         <div className="flex gap-2 mt-1">
+                           <Button
+                             variant={selectedObject.fontWeight === 'bold' ? "default" : "outline"}
+                             size="sm"
+                             onClick={() => toggleTextStyle('fontWeight')}
+                             className="flex-1"
+                           >
+                             <Bold className="h-4 w-4" />
+                           </Button>
+                           <Button
                             variant={selectedObject.fontStyle === 'italic' ? "default" : "outline"}
                             size="sm"
                             onClick={() => toggleTextStyle('fontStyle')}
@@ -957,6 +1002,64 @@ const Editor = () => {
                         </div>
                       </div>
                     </CardContent>
+                   </Card>
+                )}
+                
+                {selectedObject && selectedObject.type !== "i-text" && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Object Properties</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <Label>Opacity</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            value={selectedObject.opacity || 1}
+                            onChange={(e) => updateObjectProperty("opacity", parseFloat(e.target.value))}
+                            className="flex-1"
+                          />
+                          <span className="text-sm text-muted-foreground w-12">{Math.round((selectedObject.opacity || 1) * 100)}%</span>
+                        </div>
+                      </div>
+                      
+                      {(selectedObject.type === "rect" || selectedObject.type === "circle" || selectedObject.type === "triangle" || selectedObject.type === "polygon" || selectedObject.type === "line") && (
+                        <>
+                          <div>
+                            <Label>Fill Color</Label>
+                            <Input
+                              type="color"
+                              value={selectedObject.fill || "#000000"}
+                              onChange={(e) => updateObjectProperty("fill", e.target.value)}
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label>Stroke Color</Label>
+                            <Input
+                              type="color"
+                              value={selectedObject.stroke || "#000000"}
+                              onChange={(e) => updateObjectProperty("stroke", e.target.value)}
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label>Stroke Width</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="20"
+                              value={selectedObject.strokeWidth || 0}
+                              onChange={(e) => updateObjectProperty("strokeWidth", parseInt(e.target.value))}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
                   </Card>
                 )}
               </TabsContent>
@@ -964,9 +1067,130 @@ const Editor = () => {
               <TabsContent value="design" className="space-y-4">
                 <ElementManager onAddElement={handleAddElement} />
               </TabsContent>
+
+              <TabsContent value="canvas" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Canvas Size</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => changeCanvasSize(2480, 3508)}
+                      >
+                        A4
+                        <span className="text-xs text-muted-foreground ml-1">(Portrait)</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => changeCanvasSize(2550, 3300)}
+                      >
+                        Letter
+                        <span className="text-xs text-muted-foreground ml-1">(8.5x11)</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => changeCanvasSize(1080, 1080)}
+                      >
+                        Instagram
+                        <span className="text-xs text-muted-foreground ml-1">(Square)</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => changeCanvasSize(1200, 630)}
+                      >
+                        Facebook
+                        <span className="text-xs text-muted-foreground ml-1">(Cover)</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => changeCanvasSize(800, 600)}
+                        className="col-span-2"
+                      >
+                        Default (800x600)
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Background</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label>Background Color</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="color"
+                          value={canvasBackground}
+                          onChange={(e) => handleCanvasBackgroundChange(e.target.value)}
+                          className="w-12 h-10 p-1 border rounded"
+                        />
+                        <Input
+                          type="text"
+                          value={canvasBackground}
+                          onChange={(e) => handleCanvasBackgroundChange(e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-4 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCanvasBackgroundChange("#ffffff")}
+                        className="h-8 w-full bg-white border-2"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCanvasBackgroundChange("#f8f9fa")}
+                        className="h-8 w-full bg-gray-100 border-2"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCanvasBackgroundChange("#fff9e6")}
+                        className="h-8 w-full bg-amber-50 border-2"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCanvasBackgroundChange("#e8f4f8")}
+                        className="h-8 w-full bg-blue-50 border-2"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Zoom</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={handleZoomOut}>-</Button>
+                      <span className="text-sm flex-1 text-center">{Math.round(canvasZoom * 100)}%</span>
+                      <Button variant="outline" size="sm" onClick={handleZoomIn}>+</Button>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleZoomReset} className="w-full">
+                      Reset Zoom
+                    </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
           </div>
         </div>
+        )}
 
         {/* Main Canvas Area */}
         <div className="flex-1 flex flex-col">
@@ -1044,8 +1268,17 @@ const Editor = () => {
               </div>
               
               <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsPreviewMode(!isPreviewMode)}
+                  title={isPreviewMode ? "Exit Preview" : "Preview Mode"}
+                >
+                  {isPreviewMode ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                  {isPreviewMode ? "Exit Preview" : "Preview"}
+                </Button>
                 <AIAssistantDialog onSuggestion={handleAISuggestion} />
-                <SendCertificateDialog 
+                <SendCertificateDialog
                   canvasRef={canvasRef} 
                   fabricCanvas={fabricCanvas}
                   certificateId={generateCertificateId()}
