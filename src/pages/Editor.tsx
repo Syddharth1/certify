@@ -1,41 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation } from "react-router-dom";
-import { Canvas as FabricCanvas, Circle, Rect, IText, util, Image as FabricImage, Triangle, Line, Polygon, loadSVGFromString, Group } from "fabric";
+import { Canvas as FabricCanvas, Circle, Rect, IText, util, Image as FabricImage, Triangle, Line, Polygon, loadSVGFromString, Group, ActiveSelection, Shadow } from "fabric";
 import { 
   Type, 
   Square, 
   Circle as CircleIcon, 
-  Image as ImageIcon, 
-  Download, 
-  Save, 
-  Undo, 
-  Redo,
-  Palette,
   Upload,
   QrCode,
   Triangle as TriangleIcon,
   Minus,
   Pentagon,
   Star,
-  Award,
-  Crown,
-  Zap,
-  Heart,
   Hexagon,
-  Trash2,
-  Bold,
-  Italic,
-  Underline,
-  Lock,
-  Unlock,
-  MoveUp,
-  MoveDown,
-  Send,
-  BringToFront,
   Hash,
-  Eye,
-  EyeOff,
-  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,12 +22,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import QRCodeGenerator from "qrcode";
 import { ElementManager } from "@/components/ElementManager";
-import { SendCertificateDialog } from "@/components/SendCertificateDialog";
-import AIAssistantDialog from "@/components/AIAssistantDialog";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { ProductTour } from "@/components/ProductTour";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { SkipToContent } from "@/components/SkipToContent";
+import { 
+  EditorToolbar, 
+  PositionControls, 
+  LayersPanel, 
+  TextControls, 
+  ShapeControls 
+} from "@/components/editor";
 
 const Editor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -64,12 +46,11 @@ const Editor = () => {
   const [certificateId, setCertificateId] = useState<string>("");
   const [certificateTitle, setCertificateTitle] = useState("Certificate of Achievement");
   const [message, setMessage] = useState("This certifies that the above named person has successfully completed the requirements.");
-  const [senderName, setSenderName] = useState("");
-  const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const [canvasZoom, setCanvasZoom] = useState(1);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [canvasBackground, setCanvasBackground] = useState("#ffffff");
-  const [showGrid, setShowGrid] = useState(false);
+  const [clipboard, setClipboard] = useState<any>(null);
+  const [, forceUpdate] = useState({});
 
   const handleAISuggestion = (text: string, type: 'title' | 'message') => {
     if (type === 'title') {
@@ -79,24 +60,18 @@ const Editor = () => {
     }
   };
 
-  const saveToHistory = () => {
+  const saveToHistory = useCallback(() => {
     if (!fabricCanvas) return;
     
     const canvasJson = JSON.stringify(fabricCanvas.toJSON());
     setCanvasHistory(prev => {
       const newHistory = prev.slice(0, historyIndex + 1);
       newHistory.push(canvasJson);
-      
-      // Keep history to reasonable size
-      if (newHistory.length > 50) {
-        newHistory.shift();
-        return newHistory;
-      }
-      
-      setHistoryIndex(prev => prev + 1);
+      if (newHistory.length > 50) newHistory.shift();
       return newHistory;
     });
-  };
+    setHistoryIndex(prev => Math.min(prev + 1, 49));
+  }, [fabricCanvas, historyIndex]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -105,73 +80,62 @@ const Editor = () => {
       width: 800,
       height: 600,
       backgroundColor: canvasBackground,
+      preserveObjectStacking: true,
     });
 
-    // Selection event handler
-    canvas.on("selection:created", (e) => {
-      setSelectedObject(e.selected?.[0] || null);
-    });
-
-    canvas.on("selection:updated", (e) => {
-      setSelectedObject(e.selected?.[0] || null);
-    });
-
-    canvas.on("selection:cleared", () => {
-      setSelectedObject(null);
-    });
-
-    // Add canvas event listeners for history tracking
-    canvas.on('object:added', saveToHistory);
-    canvas.on('object:removed', saveToHistory);
-    canvas.on('object:modified', saveToHistory);
+    canvas.on("selection:created", (e) => setSelectedObject(e.selected?.[0] || null));
+    canvas.on("selection:updated", (e) => setSelectedObject(e.selected?.[0] || null));
+    canvas.on("selection:cleared", () => setSelectedObject(null));
+    canvas.on('object:modified', () => forceUpdate({}));
 
     setFabricCanvas(canvas);
     
-    // Load template data if provided
     const templateData = location.state?.templateData;
     if (templateData) {
       canvas.loadFromJSON(templateData, () => {
         canvas.renderAll();
-        saveToHistory();
         toast.success("Template loaded successfully!");
       });
     } else {
-      // Save initial state for blank canvas
-      setTimeout(() => saveToHistory(), 100);
       toast("Blank canvas ready! Start creating your design.");
     }
 
-    return () => {
-      canvas.dispose();
-    };
+    return () => { canvas.dispose(); };
   }, [location.state]);
 
-  // Auto-save functionality
+  // Save history on object changes
   useEffect(() => {
     if (!fabricCanvas) return;
+    const save = () => saveToHistory();
+    fabricCanvas.on('object:added', save);
+    fabricCanvas.on('object:removed', save);
+    fabricCanvas.on('object:modified', save);
+    return () => {
+      fabricCanvas.off('object:added', save);
+      fabricCanvas.off('object:removed', save);
+      fabricCanvas.off('object:modified', save);
+    };
+  }, [fabricCanvas, saveToHistory]);
 
-    const autoSaveInterval = setInterval(() => {
+  // Auto-save
+  useEffect(() => {
+    if (!fabricCanvas) return;
+    const interval = setInterval(() => {
       const objects = fabricCanvas.getObjects();
       if (objects.length > 0) {
-        setAutoSaveStatus("saving");
         try {
-          const canvasData = JSON.stringify(fabricCanvas.toJSON());
-          localStorage.setItem('savedCertificate', canvasData);
-          setAutoSaveStatus("saved");
+          localStorage.setItem('savedCertificate', JSON.stringify(fabricCanvas.toJSON()));
         } catch (error) {
           console.error("Auto-save error:", error);
-          setAutoSaveStatus("unsaved");
         }
       }
-    }, 30000); // Auto-save every 30 seconds
-
-    return () => clearInterval(autoSaveInterval);
+    }, 30000);
+    return () => clearInterval(interval);
   }, [fabricCanvas]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent shortcuts when typing in input fields
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
@@ -183,6 +147,21 @@ const Editor = () => {
       } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         handleSave();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        e.preventDefault();
+        handleCopy();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        e.preventDefault();
+        handlePaste();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        handleDuplicate();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'g' && !e.shiftKey) {
+        e.preventDefault();
+        handleGroup();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'g' && e.shiftKey) {
+        e.preventDefault();
+        handleUngroup();
       } else if (e.key === 'Delete' && selectedObject) {
         e.preventDefault();
         handleDeleteSelected();
@@ -195,114 +174,49 @@ const Editor = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [fabricCanvas, selectedObject, historyIndex, canvasHistory]);
+  }, [fabricCanvas, selectedObject, historyIndex, canvasHistory, clipboard]);
 
   const handleToolClick = (tool: typeof activeTool) => {
     setActiveTool(tool);
-
     if (!fabricCanvas) return;
 
-    if (tool === "rectangle") {
-      const rect = new Rect({
-        left: 100,
-        top: 100,
-        fill: activeColor,
-        width: 150,
-        height: 100,
-      });
-      fabricCanvas.add(rect);
-      fabricCanvas.setActiveObject(rect);
-    } else if (tool === "circle") {
-      const circle = new Circle({
-        left: 100,
-        top: 100,
-        fill: activeColor,
-        radius: 75,
-      });
-      fabricCanvas.add(circle);
-      fabricCanvas.setActiveObject(circle);
-    } else if (tool === "triangle") {
-      const triangle = new Triangle({
-        left: 100,
-        top: 100,
-        fill: activeColor,
-        width: 100,
-        height: 100,
-      });
-      fabricCanvas.add(triangle);
-      fabricCanvas.setActiveObject(triangle);
-    } else if (tool === "line") {
-      const line = new Line([50, 100, 200, 100], {
-        left: 100,
-        top: 100,
-        stroke: activeColor,
-        strokeWidth: 3,
-      });
-      fabricCanvas.add(line);
-      fabricCanvas.setActiveObject(line);
-    } else if (tool === "star") {
-      const star = createStar(100, 100, 5, 50, 25, activeColor);
-      fabricCanvas.add(star);
-      fabricCanvas.setActiveObject(star);
-    } else if (tool === "pentagon") {
-      const pentagon = createPolygon(100, 100, 50, 5, activeColor);
-      fabricCanvas.add(pentagon);
-      fabricCanvas.setActiveObject(pentagon);
-    } else if (tool === "hexagon") {
-      const hexagon = createPolygon(100, 100, 50, 6, activeColor);
-      fabricCanvas.add(hexagon);
-      fabricCanvas.setActiveObject(hexagon);
-    } else if (tool === "text") {
-      const text = new IText("Your text here", {
-        left: 100,
-        top: 100,
-        fontSize: 24,
-        fill: activeColor,
-        fontFamily: "Inter",
-      });
-      fabricCanvas.add(text);
-      fabricCanvas.setActiveObject(text);
-    }
+    const shapes: Record<string, () => any> = {
+      rectangle: () => new Rect({ left: 100, top: 100, fill: activeColor, width: 150, height: 100 }),
+      circle: () => new Circle({ left: 100, top: 100, fill: activeColor, radius: 75 }),
+      triangle: () => new Triangle({ left: 100, top: 100, fill: activeColor, width: 100, height: 100 }),
+      line: () => new Line([50, 100, 200, 100], { left: 100, top: 100, stroke: activeColor, strokeWidth: 3 }),
+      star: () => createStar(100, 100, 5, 50, 25, activeColor),
+      pentagon: () => createPolygon(100, 100, 50, 5, activeColor),
+      hexagon: () => createPolygon(100, 100, 50, 6, activeColor),
+      text: () => new IText("Your text here", { left: 100, top: 100, fontSize: 24, fill: activeColor, fontFamily: "Inter" }),
+    };
 
-    fabricCanvas.renderAll();
+    const createShape = shapes[tool];
+    if (createShape) {
+      const shape = createShape();
+      fabricCanvas.add(shape);
+      fabricCanvas.setActiveObject(shape);
+      fabricCanvas.renderAll();
+    }
   };
 
   const createStar = (centerX: number, centerY: number, points: number, outerRadius: number, innerRadius: number, color: string) => {
     const angle = Math.PI / points;
     const starPoints = [];
-    
     for (let i = 0; i < 2 * points; i++) {
       const radius = i % 2 === 0 ? outerRadius : innerRadius;
-      const x = centerX + Math.cos(i * angle) * radius;
-      const y = centerY + Math.sin(i * angle) * radius;
-      starPoints.push({ x, y });
+      starPoints.push({ x: centerX + Math.cos(i * angle) * radius, y: centerY + Math.sin(i * angle) * radius });
     }
-
-    return new Polygon(starPoints, {
-      left: centerX,
-      top: centerY,
-      fill: color,
-      originX: 'center',
-      originY: 'center',
-    });
+    return new Polygon(starPoints, { left: centerX, top: centerY, fill: color, originX: 'center', originY: 'center' });
   };
 
   const createPolygon = (centerX: number, centerY: number, radius: number, sides: number, color: string) => {
     const points = [];
     for (let i = 0; i < sides; i++) {
       const angle = (i * 2 * Math.PI) / sides;
-      const x = centerX + Math.cos(angle) * radius;
-      const y = centerY + Math.sin(angle) * radius;
-      points.push({ x, y });
+      points.push({ x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius });
     }
-
-    return new Polygon(points, {
-      left: centerX,
-      top: centerY,
-      fill: color,
-      originX: 'center',
-      originY: 'center',
-    });
+    return new Polygon(points, { left: centerX, top: centerY, fill: color, originX: 'center', originY: 'center' });
   };
 
   const generateCertificateId = () => {
@@ -316,20 +230,11 @@ const Editor = () => {
 
   const handleAddQRCode = async () => {
     if (!fabricCanvas) return;
-
     try {
       const certId = generateCertificateId();
       const verificationUrl = `https://certify-cert.vercel.app/certificate/${certId}`;
-      const qrCodeUrl = await QRCodeGenerator.toDataURL(verificationUrl, {
-        width: 300,
-        margin: 1,
-        color: {
-          dark: '#000000',
-          light: '#ffffff'
-        }
-      });
+      const qrCodeUrl = await QRCodeGenerator.toDataURL(verificationUrl, { width: 300, margin: 1, color: { dark: '#000000', light: '#ffffff' } });
 
-      // Create a canvas to composite QR code with logo
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
@@ -340,56 +245,33 @@ const Editor = () => {
       qrImage.onload = async () => {
         canvas.width = qrImage.width;
         canvas.height = qrImage.height;
-        
-        // Draw QR code
         ctx.drawImage(qrImage, 0, 0);
         
-        // Load and draw logo in center
         const logo = new Image();
         logo.crossOrigin = 'anonymous';
         
         logo.onload = () => {
-          const logoSize = canvas.width * 0.2; // Logo is 20% of QR code size
+          const logoSize = canvas.width * 0.2;
           const logoX = (canvas.width - logoSize) / 2;
           const logoY = (canvas.height - logoSize) / 2;
-          
-          // Draw white background circle for logo
           ctx.fillStyle = '#ffffff';
           ctx.beginPath();
           ctx.arc(canvas.width / 2, canvas.height / 2, logoSize * 0.6, 0, 2 * Math.PI);
           ctx.fill();
-          
-          // Draw logo
           ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
           
-          // Convert to data URL and add to fabric canvas
           const finalDataUrl = canvas.toDataURL();
-          
           util.loadImage(finalDataUrl, { crossOrigin: 'anonymous' }).then((img) => {
-            const qrCode = new FabricImage(img, {
-              left: 650,
-              top: 450,
-              scaleX: 0.4,
-              scaleY: 0.4,
-            });
+            const qrCode = new FabricImage(img, { left: 650, top: 450, scaleX: 0.4, scaleY: 0.4 });
             fabricCanvas.add(qrCode);
             fabricCanvas.renderAll();
             toast.success("QR code with logo added!");
-          }).catch((error) => {
-            console.error("Error loading final QR code:", error);
-            toast.error("Failed to load QR code image");
           });
         };
         
         logo.onerror = () => {
-          // If logo fails to load, just use the QR code without logo
           util.loadImage(qrCodeUrl, { crossOrigin: 'anonymous' }).then((img) => {
-            const qrCode = new FabricImage(img, {
-              left: 650,
-              top: 450,
-              scaleX: 0.4,
-              scaleY: 0.4,
-            });
+            const qrCode = new FabricImage(img, { left: 650, top: 450, scaleX: 0.4, scaleY: 0.4 });
             fabricCanvas.add(qrCode);
             fabricCanvas.renderAll();
             toast.success("QR code added!");
@@ -408,173 +290,89 @@ const Editor = () => {
 
   const handleAddCertificateId = () => {
     if (!fabricCanvas) return;
-
     const certId = generateCertificateId();
     const text = new IText(`Certificate ID: ${certId}`, {
-      left: 50,
-      top: 550,
-      fontSize: 12,
-      fill: "#666666",
-      fontFamily: "Inter",
-      fontWeight: "normal",
-      editable: false,
-      selectable: true,
+      left: 50, top: 550, fontSize: 12, fill: "#666666", fontFamily: "Inter", fontWeight: "normal", editable: false, selectable: true,
     });
-    
     fabricCanvas.add(text);
     fabricCanvas.setActiveObject(text);
     fabricCanvas.renderAll();
-    toast("Certificate ID added to the certificate! You can move but not edit it.");
+    toast("Certificate ID added!");
   };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !fabricCanvas) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
       const imageUrl = e.target?.result as string;
       util.loadImage(imageUrl).then((img) => {
-        const fabricImage = new FabricImage(img, {
-          left: 100,
-          top: 100,
-          scaleX: 0.5,
-          scaleY: 0.5,
-        });
+        const fabricImage = new FabricImage(img, { left: 100, top: 100, scaleX: 0.5, scaleY: 0.5 });
         fabricCanvas.add(fabricImage);
         fabricCanvas.renderAll();
       });
     };
     reader.readAsDataURL(file);
-    toast("Image uploaded successfully!");
+    toast("Image uploaded!");
   };
 
-  const handleExportPDF = () => {
-    if (!fabricCanvas) {
-      toast.error("Canvas not ready");
-      return;
-    }
-    
-    // Check if canvas has any objects
+  const handleExport = (format: 'png' | 'jpeg' | 'svg') => {
+    if (!fabricCanvas) return;
     const objects = fabricCanvas.getObjects();
     if (objects.length === 0) {
-      toast.error("Canvas is empty. Please add some elements before exporting.");
+      toast.error("Canvas is empty");
       return;
     }
     
     try {
-      const dataURL = fabricCanvas.toDataURL({
-        format: "png",
-        quality: 1,
-        multiplier: 2,
-        enableRetinaScaling: false,
-      });
-      
-      // Create download link
-      const link = document.createElement("a");
-      link.download = "certificate.png";
-      link.href = dataURL;
-      link.click();
-      
-      toast.success("Certificate exported successfully!");
+      if (format === 'svg') {
+        const svg = fabricCanvas.toSVG();
+        const blob = new Blob([svg], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.download = "certificate.svg";
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const dataURL = fabricCanvas.toDataURL({
+          format,
+          quality: format === 'jpeg' ? 0.9 : 1,
+          multiplier: 2,
+          enableRetinaScaling: false,
+        });
+        const link = document.createElement("a");
+        link.download = `certificate.${format}`;
+        link.href = dataURL;
+        link.click();
+      }
+      toast.success(`Exported as ${format.toUpperCase()}!`);
     } catch (error) {
       console.error("Export error:", error);
-      toast.error("Failed to export certificate. Please try again.");
+      toast.error("Failed to export");
     }
   };
 
   const handleSave = async () => {
-    if (!fabricCanvas) {
-      toast.error("Canvas not ready");
-      return;
-    }
-
-    // Check if canvas has any objects
+    if (!fabricCanvas) return;
     const objects = fabricCanvas.getObjects();
     if (objects.length === 0) {
-      toast.error("Canvas is empty. Please add some elements before saving.");
+      toast.error("Canvas is empty");
       return;
     }
-
     try {
-      // Save canvas state to localStorage for now (in a real app, you'd save to database)
-      const canvasData = JSON.stringify(fabricCanvas.toJSON());
-      localStorage.setItem('savedCertificate', canvasData);
-      toast.success("Certificate saved successfully!");
+      localStorage.setItem('savedCertificate', JSON.stringify(fabricCanvas.toJSON()));
+      toast.success("Certificate saved!");
     } catch (error) {
       console.error("Save error:", error);
-      toast.error("Failed to save certificate. Please try again.");
+      toast.error("Failed to save");
     }
   };
-
-  const addDesignElement = async (type: string) => {
-    if (!fabricCanvas) return;
-
-    try {
-      let svgString = '';
-      
-      switch (type) {
-        case 'medal':
-          svgString = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="50" cy="50" r="40" fill="#d4af37" stroke="#b8860b" stroke-width="3"/>
-            <circle cx="50" cy="50" r="25" fill="#f4d03f" stroke="#d4af37" stroke-width="2"/>
-            <text x="50" y="55" text-anchor="middle" font-family="serif" font-size="12" fill="#8b4513">★</text>
-          </svg>`;
-          break;
-        case 'ribbon':
-          svgString = `<svg width="120" height="40" viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10 10 L110 10 L100 30 L20 30 Z" fill="#e74c3c" stroke="#c0392b" stroke-width="1"/>
-            <text x="60" y="25" text-anchor="middle" font-family="serif" font-size="10" fill="white">AWARD</text>
-          </svg>`;
-          break;
-        case 'crown':
-          svgString = `<svg width="80" height="60" viewBox="0 0 80 60" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10 45 L20 20 L30 35 L40 15 L50 35 L60 20 L70 45 Z" fill="#ffd700" stroke="#ffb347" stroke-width="2"/>
-            <circle cx="20" cy="20" r="3" fill="#ff6b6b"/>
-            <circle cx="40" cy="15" r="4" fill="#ff6b6b"/>
-            <circle cx="60" cy="20" r="3" fill="#ff6b6b"/>
-          </svg>`;
-          break;
-        case 'seal':
-          svgString = `<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="40" cy="40" r="35" fill="#8b0000" stroke="#654321" stroke-width="2"/>
-            <circle cx="40" cy="40" r="25" fill="#a0522d"/>
-            <text x="40" y="45" text-anchor="middle" font-family="serif" font-size="8" fill="#fff">OFFICIAL</text>
-          </svg>`;
-          break;
-        case 'star-badge':
-          svgString = `<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-            <path d="M40 10 L45 30 L65 30 L50 42 L55 62 L40 50 L25 62 L30 42 L15 30 L35 30 Z" fill="#4169e1" stroke="#1e3a8a" stroke-width="2"/>
-            <circle cx="40" cy="40" r="12" fill="#60a5fa"/>
-          </svg>`;
-          break;
-        default:
-          return;
-      }
-
-      // Convert SVG to fabric object
-      loadSVGFromString(svgString).then(({ objects }) => {
-        const svgObject = new Group(objects, {
-          left: 100,
-          top: 100,
-        });
-        fabricCanvas.add(svgObject);
-        fabricCanvas.renderAll();
-        toast(`${type} added to certificate!`);
-      });
-    } catch (error) {
-      console.error('Error adding design element:', error);
-      toast.error('Failed to add design element');
-    }
-  };
-
 
   const handleUndo = () => {
     if (historyIndex > 0 && fabricCanvas) {
       const newIndex = historyIndex - 1;
-      const canvasState = canvasHistory[newIndex];
-      
-      fabricCanvas.loadFromJSON(canvasState).then(() => {
+      fabricCanvas.loadFromJSON(canvasHistory[newIndex]).then(() => {
         setHistoryIndex(newIndex);
         fabricCanvas.renderAll();
       });
@@ -584,9 +382,7 @@ const Editor = () => {
   const handleRedo = () => {
     if (historyIndex < canvasHistory.length - 1 && fabricCanvas) {
       const newIndex = historyIndex + 1;
-      const canvasState = canvasHistory[newIndex];
-      
-      fabricCanvas.loadFromJSON(canvasState).then(() => {
+      fabricCanvas.loadFromJSON(canvasHistory[newIndex]).then(() => {
         setHistoryIndex(newIndex);
         fabricCanvas.renderAll();
       });
@@ -595,59 +391,69 @@ const Editor = () => {
 
   const handleDeleteSelected = () => {
     if (!fabricCanvas || !selectedObject) return;
-    
     fabricCanvas.remove(selectedObject);
     setSelectedObject(null);
     fabricCanvas.renderAll();
     toast("Object deleted");
   };
 
-  const handleAddElement = (imageUrl: string, title: string) => {
-    if (!fabricCanvas) return;
-
-    util.loadImage(imageUrl, { crossOrigin: 'anonymous' }).then((img) => {
-      const fabricImage = new FabricImage(img, {
-        left: 100,
-        top: 100,
-        scaleX: 0.5,
-        scaleY: 0.5,
-      });
-      fabricCanvas.add(fabricImage);
-      fabricCanvas.renderAll();
-      toast(`${title} added to certificate!`);
-    }).catch((error) => {
-      console.error("Error loading image:", error);
-      toast.error("Failed to load element image");
+  const handleCopy = () => {
+    if (!fabricCanvas || !selectedObject) return;
+    selectedObject.clone().then((cloned: any) => {
+      setClipboard(cloned);
+      toast("Copied to clipboard");
     });
   };
 
-  const updateObjectProperty = (property: string, value: any) => {
-    if (!selectedObject || !fabricCanvas) return;
-
-    selectedObject.set(property, value);
-    fabricCanvas.renderAll();
+  const handlePaste = () => {
+    if (!fabricCanvas || !clipboard) return;
+    clipboard.clone().then((cloned: any) => {
+      cloned.set({ left: (cloned.left || 0) + 20, top: (cloned.top || 0) + 20 });
+      fabricCanvas.add(cloned);
+      fabricCanvas.setActiveObject(cloned);
+      fabricCanvas.renderAll();
+      toast("Pasted");
+    });
   };
 
-  const toggleTextStyle = (style: 'fontWeight' | 'fontStyle' | 'underline') => {
-    if (!selectedObject || selectedObject.type !== "i-text" || !fabricCanvas) return;
+  const handleDuplicate = () => {
+    if (!fabricCanvas || !selectedObject) return;
+    selectedObject.clone().then((cloned: any) => {
+      cloned.set({ left: (cloned.left || 0) + 20, top: (cloned.top || 0) + 20 });
+      fabricCanvas.add(cloned);
+      fabricCanvas.setActiveObject(cloned);
+      fabricCanvas.renderAll();
+      toast("Duplicated");
+    });
+  };
 
-    if (style === 'fontWeight') {
-      const newWeight = selectedObject.fontWeight === 'bold' ? 'normal' : 'bold';
-      selectedObject.set('fontWeight', newWeight);
-    } else if (style === 'fontStyle') {
-      const newStyle = selectedObject.fontStyle === 'italic' ? 'normal' : 'italic';
-      selectedObject.set('fontStyle', newStyle);
-    } else if (style === 'underline') {
-      const newUnderline = !selectedObject.underline;
-      selectedObject.set('underline', newUnderline);
-    }
-
+  const handleGroup = () => {
+    if (!fabricCanvas) return;
+    const activeObjects = fabricCanvas.getActiveObjects();
+    if (activeObjects.length < 2) return;
+    
+    fabricCanvas.discardActiveObject();
+    const group = new Group(activeObjects);
+    activeObjects.forEach(obj => fabricCanvas.remove(obj));
+    fabricCanvas.add(group);
+    fabricCanvas.setActiveObject(group);
     fabricCanvas.renderAll();
+    toast("Objects grouped");
+  };
+
+  const handleUngroup = () => {
+    if (!fabricCanvas || !selectedObject || selectedObject.type !== 'group') return;
+    const items = selectedObject.getObjects();
+    fabricCanvas.remove(selectedObject);
+    items.forEach((item: any) => {
+      fabricCanvas.add(item);
+    });
+    fabricCanvas.renderAll();
+    toast("Objects ungrouped");
   };
 
   const toggleLock = () => {
     if (!selectedObject || !fabricCanvas) return;
-
     const isLocked = selectedObject.lockMovementX;
     selectedObject.set({
       lockMovementX: !isLocked,
@@ -658,59 +464,107 @@ const Editor = () => {
       selectable: isLocked,
       evented: isLocked
     });
-
     fabricCanvas.renderAll();
-    toast(isLocked ? "Object unlocked" : "Object locked");
+    toast(isLocked ? "Unlocked" : "Locked");
   };
 
-  const bringToFront = () => {
+  const handleAlign = (alignment: string) => {
+    if (!fabricCanvas || !selectedObject) return;
+    const canvasWidth = fabricCanvas.width || 800;
+    const canvasHeight = fabricCanvas.height || 600;
+    const objWidth = (selectedObject.width || 0) * (selectedObject.scaleX || 1);
+    const objHeight = (selectedObject.height || 0) * (selectedObject.scaleY || 1);
+
+    const alignments: Record<string, () => void> = {
+      left: () => selectedObject.set({ left: 0 }),
+      center: () => selectedObject.set({ left: (canvasWidth - objWidth) / 2 }),
+      right: () => selectedObject.set({ left: canvasWidth - objWidth }),
+      top: () => selectedObject.set({ top: 0 }),
+      middle: () => selectedObject.set({ top: (canvasHeight - objHeight) / 2 }),
+      bottom: () => selectedObject.set({ top: canvasHeight - objHeight }),
+    };
+
+    alignments[alignment]?.();
+    fabricCanvas.renderAll();
+    toast(`Aligned ${alignment}`);
+  };
+
+  const updateObjectProperty = (property: string, value: any) => {
     if (!selectedObject || !fabricCanvas) return;
-    fabricCanvas.bringObjectToFront(selectedObject);
+    if (property === 'shadow' && value) {
+      selectedObject.set('shadow', new Shadow(value));
+    } else {
+      selectedObject.set(property, value);
+    }
     fabricCanvas.renderAll();
-    toast("Brought to front");
+    forceUpdate({});
   };
 
-  const sendToBack = () => {
-    if (!selectedObject || !fabricCanvas) return;
-    fabricCanvas.sendObjectToBack(selectedObject);
+  const toggleTextStyle = (style: 'fontWeight' | 'fontStyle' | 'underline') => {
+    if (!selectedObject || selectedObject.type !== "i-text" || !fabricCanvas) return;
+    const styles: Record<string, () => void> = {
+      fontWeight: () => selectedObject.set('fontWeight', selectedObject.fontWeight === 'bold' ? 'normal' : 'bold'),
+      fontStyle: () => selectedObject.set('fontStyle', selectedObject.fontStyle === 'italic' ? 'normal' : 'italic'),
+      underline: () => selectedObject.set('underline', !selectedObject.underline),
+    };
+    styles[style]?.();
     fabricCanvas.renderAll();
-    toast("Sent to back");
   };
 
-  const bringForward = () => {
-    if (!selectedObject || !fabricCanvas) return;
-    fabricCanvas.bringObjectForward(selectedObject);
-    fabricCanvas.renderAll();
-    toast("Moved forward");
-  };
-
-  const sendBackward = () => {
-    if (!selectedObject || !fabricCanvas) return;
-    fabricCanvas.sendObjectBackwards(selectedObject);
-    fabricCanvas.renderAll();
-    toast("Moved backward");
-  };
-
-  const handleZoomIn = () => {
+  const handleAddElement = (imageUrl: string, title: string) => {
     if (!fabricCanvas) return;
-    const newZoom = Math.min(canvasZoom + 0.1, 3);
+    util.loadImage(imageUrl, { crossOrigin: 'anonymous' }).then((img) => {
+      const fabricImage = new FabricImage(img, { left: 100, top: 100, scaleX: 0.5, scaleY: 0.5 });
+      fabricCanvas.add(fabricImage);
+      fabricCanvas.renderAll();
+      toast(`${title} added!`);
+    }).catch(() => toast.error("Failed to load element"));
+  };
+
+  const handleSelectObject = (obj: any) => {
+    if (!fabricCanvas) return;
+    fabricCanvas.setActiveObject(obj);
+    fabricCanvas.renderAll();
+    setSelectedObject(obj);
+  };
+
+  const handleToggleVisibility = (obj: any) => {
+    if (!fabricCanvas) return;
+    obj.set('visible', obj.visible === false ? true : false);
+    fabricCanvas.renderAll();
+    forceUpdate({});
+  };
+
+  const handleToggleObjectLock = (obj: any) => {
+    if (!fabricCanvas) return;
+    const isLocked = obj.lockMovementX;
+    obj.set({
+      lockMovementX: !isLocked,
+      lockMovementY: !isLocked,
+      lockRotation: !isLocked,
+      lockScalingX: !isLocked,
+      lockScalingY: !isLocked,
+    });
+    fabricCanvas.renderAll();
+    forceUpdate({});
+  };
+
+  const handleDeleteObject = (obj: any) => {
+    if (!fabricCanvas) return;
+    fabricCanvas.remove(obj);
+    if (selectedObject === obj) setSelectedObject(null);
+    fabricCanvas.renderAll();
+    forceUpdate({});
+  };
+
+  const handleZoom = (direction: 'in' | 'out' | 'reset') => {
+    if (!fabricCanvas) return;
+    let newZoom = canvasZoom;
+    if (direction === 'in') newZoom = Math.min(canvasZoom + 0.1, 3);
+    else if (direction === 'out') newZoom = Math.max(canvasZoom - 0.1, 0.5);
+    else newZoom = 1;
     setCanvasZoom(newZoom);
     fabricCanvas.setZoom(newZoom);
-    fabricCanvas.renderAll();
-  };
-
-  const handleZoomOut = () => {
-    if (!fabricCanvas) return;
-    const newZoom = Math.max(canvasZoom - 0.1, 0.5);
-    setCanvasZoom(newZoom);
-    fabricCanvas.setZoom(newZoom);
-    fabricCanvas.renderAll();
-  };
-
-  const handleZoomReset = () => {
-    if (!fabricCanvas) return;
-    setCanvasZoom(1);
-    fabricCanvas.setZoom(1);
     fabricCanvas.renderAll();
   };
 
@@ -718,7 +572,7 @@ const Editor = () => {
     if (!fabricCanvas) return;
     fabricCanvas.setDimensions({ width, height });
     fabricCanvas.renderAll();
-    toast.success(`Canvas resized to ${width}x${height}`);
+    toast.success(`Canvas: ${width}x${height}`);
   };
 
   const handleCanvasBackgroundChange = (color: string) => {
@@ -728,13 +582,6 @@ const Editor = () => {
     fabricCanvas.renderAll();
   };
 
-  const applyImageFilter = (filterType: 'grayscale' | 'sepia' | 'invert' | 'brightness') => {
-    if (!selectedObject || selectedObject.type !== 'image' || !fabricCanvas) return;
-    
-    // This is a placeholder - full filter implementation would require fabric.js filters
-    toast.info(`Filter ${filterType} applied (Note: Full implementation requires fabric filters)`);
-  };
-
   return (
     <>
       <SkipToContent />
@@ -742,568 +589,217 @@ const Editor = () => {
       <KeyboardShortcuts />
       <div className="min-h-screen bg-gradient-subtle">
         <div className="flex h-screen">
-        {!isPreviewMode && (
-        <div className="w-80 bg-card border-r border-border overflow-y-auto">
-          <div className="p-6">
-            <Breadcrumb />
-            <h2 className="text-xl font-display font-bold mb-6">Certificate Editor</h2>
-            
-            <Tabs defaultValue="tools" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="tools">Tools</TabsTrigger>
-                <TabsTrigger value="shapes">Shapes</TabsTrigger>
-                <TabsTrigger value="text">Text</TabsTrigger>
-                <TabsTrigger value="design">Design</TabsTrigger>
-                <TabsTrigger value="canvas">Canvas</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="tools" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Basic Tools</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                     <div className="grid grid-cols-2 gap-2">
-                       <Button
-                         variant={activeTool === "text" ? "default" : "outline"}
-                         size="sm"
-                         onClick={() => handleToolClick("text")}
-                         className="flex items-center gap-2"
-                       >
-                         <Type className="h-4 w-4" />
-                         Text
-                       </Button>
-                       <Button
-                         variant="outline"
-                         size="sm"
-                         onClick={handleAddQRCode}
-                         className="flex items-center gap-2"
-                       >
-                         <QrCode className="h-4 w-4" />
-                         QR Code
-                       </Button>
-                       <Button
-                         variant="outline"
-                         size="sm"
-                         onClick={handleAddCertificateId}
-                         className="flex items-center gap-2 col-span-2"
-                       >
-                         <Hash className="h-4 w-4" />
-                         Certificate ID
-                       </Button>
-                     </div>
-                    
-                    <div>
-                      <Label htmlFor="image-upload" className="cursor-pointer">
-                        <Button variant="outline" size="sm" className="w-full">
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload Image
-                        </Button>
-                      </Label>
-                      <Input
-                        id="image-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Color</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="color"
-                        value={activeColor}
-                        onChange={(e) => setActiveColor(e.target.value)}
-                        className="w-12 h-10 p-1 border rounded"
-                      />
-                      <Input
-                        type="text"
-                        value={activeColor}
-                        onChange={(e) => setActiveColor(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="shapes" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Basic Shapes</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant={activeTool === "rectangle" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleToolClick("rectangle")}
-                        className="flex items-center gap-2"
-                      >
-                        <Square className="h-4 w-4" />
-                        Rectangle
-                      </Button>
-                      <Button
-                        variant={activeTool === "circle" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleToolClick("circle")}
-                        className="flex items-center gap-2"
-                      >
-                        <CircleIcon className="h-4 w-4" />
-                        Circle
-                      </Button>
-                      <Button
-                        variant={activeTool === "triangle" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleToolClick("triangle")}
-                        className="flex items-center gap-2"
-                      >
-                        <TriangleIcon className="h-4 w-4" />
-                        Triangle
-                      </Button>
-                      <Button
-                        variant={activeTool === "line" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleToolClick("line")}
-                        className="flex items-center gap-2"
-                      >
-                        <Minus className="h-4 w-4" />
-                        Line
-                      </Button>
-                      <Button
-                        variant={activeTool === "pentagon" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleToolClick("pentagon")}
-                        className="flex items-center gap-2"
-                      >
-                        <Pentagon className="h-4 w-4" />
-                        Pentagon
-                      </Button>
-                      <Button
-                        variant={activeTool === "hexagon" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleToolClick("hexagon")}
-                        className="flex items-center gap-2"
-                      >
-                        <Hexagon className="h-4 w-4" />
-                        Hexagon
-                      </Button>
-                      <Button
-                        variant={activeTool === "star" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleToolClick("star")}
-                        className="flex items-center gap-2 col-span-2"
-                      >
-                        <Star className="h-4 w-4" />
-                        Star
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="text" className="space-y-4">
-                {selectedObject && selectedObject.type === "i-text" && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Text Properties</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <Label>Font Size</Label>
-                        <Input
-                          type="number"
-                          value={selectedObject.fontSize || 24}
-                          onChange={(e) => updateObjectProperty("fontSize", parseInt(e.target.value))}
-                        />
-                      </div>
-                      <div>
-                        <Label>Font Family</Label>
-                        <select
-                          className="w-full p-2 border border-border rounded"
-                          value={selectedObject.fontFamily || "Inter"}
-                          onChange={(e) => updateObjectProperty("fontFamily", e.target.value)}
-                        >
-                          <option value="Inter">Inter</option>
-                          <option value="Playfair Display">Playfair Display</option>
-                          <option value="Roboto">Roboto</option>
-                          <option value="Open Sans">Open Sans</option>
-                          <option value="Lato">Lato</option>
-                          <option value="Montserrat">Montserrat</option>
-                          <option value="Poppins">Poppins</option>
-                          <option value="Source Sans Pro">Source Sans Pro</option>
-                          <option value="Merriweather">Merriweather</option>
-                          <option value="Oswald">Oswald</option>
-                          <option value="Arial">Arial</option>
-                          <option value="Times New Roman">Times New Roman</option>
-                          <option value="Georgia">Georgia</option>
-                          <option value="Helvetica">Helvetica</option>
-                        </select>
-                      </div>
-                      <div>
-                        <Label>Text Color</Label>
-                        <Input
-                          type="color"
-                          value={selectedObject.fill || "#000000"}
-                          onChange={(e) => updateObjectProperty("fill", e.target.value)}
-                        />
-                      </div>
-                      
-                       <div>
-                         <Label>Opacity</Label>
-                         <div className="flex items-center gap-2">
-                           <Input
-                             type="range"
-                             min="0"
-                             max="1"
-                             step="0.1"
-                             value={selectedObject.opacity || 1}
-                             onChange={(e) => updateObjectProperty("opacity", parseFloat(e.target.value))}
-                             className="flex-1"
-                           />
-                           <span className="text-sm text-muted-foreground w-12">{Math.round((selectedObject.opacity || 1) * 100)}%</span>
-                         </div>
-                       </div>
-
-                       <div>
-                         <Label>Text Style</Label>
-                         <div className="flex gap-2 mt-1">
-                           <Button
-                             variant={selectedObject.fontWeight === 'bold' ? "default" : "outline"}
-                             size="sm"
-                             onClick={() => toggleTextStyle('fontWeight')}
-                             className="flex-1"
-                           >
-                             <Bold className="h-4 w-4" />
-                           </Button>
-                           <Button
-                            variant={selectedObject.fontStyle === 'italic' ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => toggleTextStyle('fontStyle')}
-                            className="flex-1"
-                          >
-                            <Italic className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant={selectedObject.underline ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => toggleTextStyle('underline')}
-                            className="flex-1"
-                          >
-                            <Underline className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                   </Card>
-                )}
+          {!isPreviewMode && (
+            <div className="w-80 bg-card border-r border-border overflow-y-auto">
+              <div className="p-6">
+                <Breadcrumb />
+                <h2 className="text-xl font-display font-bold mb-4">Certificate Editor</h2>
                 
-                {selectedObject && selectedObject.type !== "i-text" && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Object Properties</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <Label>Opacity</Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            value={selectedObject.opacity || 1}
-                            onChange={(e) => updateObjectProperty("opacity", parseFloat(e.target.value))}
-                            className="flex-1"
-                          />
-                          <span className="text-sm text-muted-foreground w-12">{Math.round((selectedObject.opacity || 1) * 100)}%</span>
+                <Tabs defaultValue="tools" className="space-y-4">
+                  <TabsList className="grid w-full grid-cols-5 text-xs">
+                    <TabsTrigger value="tools">Tools</TabsTrigger>
+                    <TabsTrigger value="shapes">Shapes</TabsTrigger>
+                    <TabsTrigger value="props">Props</TabsTrigger>
+                    <TabsTrigger value="design">Design</TabsTrigger>
+                    <TabsTrigger value="canvas">Canvas</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="tools" className="space-y-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Basic Tools</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button variant={activeTool === "text" ? "default" : "outline"} size="sm" onClick={() => handleToolClick("text")} className="flex items-center gap-2">
+                            <Type className="h-4 w-4" /> Text
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={handleAddQRCode} className="flex items-center gap-2">
+                            <QrCode className="h-4 w-4" /> QR Code
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={handleAddCertificateId} className="flex items-center gap-2 col-span-2">
+                            <Hash className="h-4 w-4" /> Certificate ID
+                          </Button>
                         </div>
-                      </div>
-                      
-                      {(selectedObject.type === "rect" || selectedObject.type === "circle" || selectedObject.type === "triangle" || selectedObject.type === "polygon" || selectedObject.type === "line") && (
-                        <>
-                          <div>
-                            <Label>Fill Color</Label>
-                            <Input
-                              type="color"
-                              value={selectedObject.fill || "#000000"}
-                              onChange={(e) => updateObjectProperty("fill", e.target.value)}
-                            />
-                          </div>
-                          
-                          <div>
-                            <Label>Stroke Color</Label>
-                            <Input
-                              type="color"
-                              value={selectedObject.stroke || "#000000"}
-                              onChange={(e) => updateObjectProperty("stroke", e.target.value)}
-                            />
-                          </div>
-                          
-                          <div>
-                            <Label>Stroke Width</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="20"
-                              value={selectedObject.strokeWidth || 0}
-                              onChange={(e) => updateObjectProperty("strokeWidth", parseInt(e.target.value))}
-                            />
-                          </div>
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
+                        <div>
+                          <Label htmlFor="image-upload" className="cursor-pointer">
+                            <Button variant="outline" size="sm" className="w-full" asChild>
+                              <span><Upload className="h-4 w-4 mr-2" /> Upload Image</span>
+                            </Button>
+                          </Label>
+                          <Input id="image-upload" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                        </div>
+                      </CardContent>
+                    </Card>
 
-              <TabsContent value="design" className="space-y-4">
-                <ElementManager onAddElement={handleAddElement} />
-              </TabsContent>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Active Color</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center gap-2">
+                          <Input type="color" value={activeColor} onChange={(e) => setActiveColor(e.target.value)} className="w-12 h-10 p-1" />
+                          <Input type="text" value={activeColor} onChange={(e) => setActiveColor(e.target.value)} className="flex-1" />
+                        </div>
+                      </CardContent>
+                    </Card>
 
-              <TabsContent value="canvas" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Canvas Size</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => changeCanvasSize(2480, 3508)}
-                      >
-                        A4
-                        <span className="text-xs text-muted-foreground ml-1">(Portrait)</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => changeCanvasSize(2550, 3300)}
-                      >
-                        Letter
-                        <span className="text-xs text-muted-foreground ml-1">(8.5x11)</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => changeCanvasSize(1080, 1080)}
-                      >
-                        Instagram
-                        <span className="text-xs text-muted-foreground ml-1">(Square)</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => changeCanvasSize(1200, 630)}
-                      >
-                        Facebook
-                        <span className="text-xs text-muted-foreground ml-1">(Cover)</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => changeCanvasSize(800, 600)}
-                        className="col-span-2"
-                      >
-                        Default (800x600)
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    <LayersPanel
+                      fabricCanvas={fabricCanvas}
+                      selectedObject={selectedObject}
+                      onSelectObject={handleSelectObject}
+                      onToggleVisibility={handleToggleVisibility}
+                      onToggleLock={handleToggleObjectLock}
+                      onDeleteObject={handleDeleteObject}
+                    />
+                  </TabsContent>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Background</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <Label>Background Color</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Input
-                          type="color"
-                          value={canvasBackground}
-                          onChange={(e) => handleCanvasBackgroundChange(e.target.value)}
-                          className="w-12 h-10 p-1 border rounded"
-                        />
-                        <Input
-                          type="text"
-                          value={canvasBackground}
-                          onChange={(e) => handleCanvasBackgroundChange(e.target.value)}
-                          className="flex-1"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-4 gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCanvasBackgroundChange("#ffffff")}
-                        className="h-8 w-full bg-white border-2"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCanvasBackgroundChange("#f8f9fa")}
-                        className="h-8 w-full bg-gray-100 border-2"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCanvasBackgroundChange("#fff9e6")}
-                        className="h-8 w-full bg-amber-50 border-2"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCanvasBackgroundChange("#e8f4f8")}
-                        className="h-8 w-full bg-blue-50 border-2"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+                  <TabsContent value="shapes" className="space-y-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Basic Shapes</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { tool: "rectangle", Icon: Square, label: "Rectangle" },
+                            { tool: "circle", Icon: CircleIcon, label: "Circle" },
+                            { tool: "triangle", Icon: TriangleIcon, label: "Triangle" },
+                            { tool: "line", Icon: Minus, label: "Line" },
+                            { tool: "pentagon", Icon: Pentagon, label: "Pentagon" },
+                            { tool: "hexagon", Icon: Hexagon, label: "Hexagon" },
+                          ].map(({ tool, Icon, label }) => (
+                            <Button key={tool} variant={activeTool === tool ? "default" : "outline"} size="sm" onClick={() => handleToolClick(tool as any)} className="flex items-center gap-2">
+                              <Icon className="h-4 w-4" /> {label}
+                            </Button>
+                          ))}
+                          <Button variant={activeTool === "star" ? "default" : "outline"} size="sm" onClick={() => handleToolClick("star")} className="flex items-center gap-2 col-span-2">
+                            <Star className="h-4 w-4" /> Star
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Zoom</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={handleZoomOut}>-</Button>
-                      <span className="text-sm flex-1 text-center">{Math.round(canvasZoom * 100)}%</span>
-                      <Button variant="outline" size="sm" onClick={handleZoomIn}>+</Button>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={handleZoomReset} className="w-full">
-                      Reset Zoom
-                    </Button>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
-        )}
+                  <TabsContent value="props" className="space-y-4">
+                    {selectedObject && <PositionControls selectedObject={selectedObject} onUpdateProperty={updateObjectProperty} />}
+                    <TextControls selectedObject={selectedObject} onUpdateProperty={updateObjectProperty} onToggleStyle={toggleTextStyle} />
+                    <ShapeControls selectedObject={selectedObject} onUpdateProperty={updateObjectProperty} />
+                    {!selectedObject && (
+                      <Card>
+                        <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                          Select an object to edit its properties
+                        </CardContent>
+                      </Card>
+                    )}
+                  </TabsContent>
 
-        {/* Main Canvas Area */}
-        <div className="flex-1 flex flex-col">
-          {/* Top Toolbar */}
-          <div className="bg-card border-b border-border p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2" data-tour="tools">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleUndo}
-                  disabled={historyIndex <= 0}
-                >
-                  <Undo className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleRedo}
-                  disabled={historyIndex >= canvasHistory.length - 1}
-                >
-                  <Redo className="h-4 w-4" />
-                </Button>
-                 {selectedObject && (
-                   <>
-                     <Button 
-                       variant="outline" 
-                       size="sm" 
-                       onClick={toggleLock}
-                       title={selectedObject.lockMovementX ? "Unlock" : "Lock"}
-                     >
-                       {selectedObject.lockMovementX ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                     </Button>
-                     <Button 
-                       variant="outline" 
-                       size="sm" 
-                       onClick={bringToFront}
-                       title="Bring to Front"
-                     >
-                       <BringToFront className="h-4 w-4" />
-                     </Button>
-                     <Button 
-                       variant="outline" 
-                       size="sm" 
-                       onClick={bringForward}
-                       title="Bring Forward"
-                     >
-                       <MoveUp className="h-4 w-4" />
-                     </Button>
-                     <Button 
-                       variant="outline" 
-                       size="sm" 
-                       onClick={sendBackward}
-                       title="Send Backward"
-                     >
-                       <MoveDown className="h-4 w-4" />
-                     </Button>
-                     <Button 
-                       variant="outline" 
-                       size="sm" 
-                       onClick={sendToBack}
-                       title="Send to Back"
-                     >
-                       <Send className="h-4 w-4" />
-                     </Button>
-                     <Button 
-                       variant="destructive" 
-                       size="sm" 
-                       onClick={handleDeleteSelected}
-                     >
-                       <Trash2 className="h-4 w-4" />
-                     </Button>
-                   </>
-                 )}
+                  <TabsContent value="design" className="space-y-4">
+                    <ElementManager onAddElement={handleAddElement} />
+                  </TabsContent>
+
+                  <TabsContent value="canvas" className="space-y-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Canvas Size</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { label: "A4", sub: "Portrait", w: 2480, h: 3508 },
+                            { label: "Letter", sub: "8.5x11", w: 2550, h: 3300 },
+                            { label: "Instagram", sub: "Square", w: 1080, h: 1080 },
+                            { label: "Facebook", sub: "Cover", w: 1200, h: 630 },
+                          ].map(({ label, sub, w, h }) => (
+                            <Button key={label} variant="outline" size="sm" onClick={() => changeCanvasSize(w, h)}>
+                              {label} <span className="text-xs text-muted-foreground ml-1">({sub})</span>
+                            </Button>
+                          ))}
+                          <Button variant="outline" size="sm" onClick={() => changeCanvasSize(800, 600)} className="col-span-2">
+                            Default (800x600)
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Background</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Input type="color" value={canvasBackground} onChange={(e) => handleCanvasBackgroundChange(e.target.value)} className="w-12 h-10 p-1" />
+                          <Input type="text" value={canvasBackground} onChange={(e) => handleCanvasBackgroundChange(e.target.value)} className="flex-1" />
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                          {["#ffffff", "#f8f9fa", "#fff9e6", "#e8f4f8"].map((color) => (
+                            <Button key={color} variant="outline" size="sm" onClick={() => handleCanvasBackgroundChange(color)} className="h-8 w-full border-2" style={{ backgroundColor: color }} />
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Zoom ({Math.round(canvasZoom * 100)}%)</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleZoom('out')}>-</Button>
+                          <div className="flex-1 text-center text-sm">{Math.round(canvasZoom * 100)}%</div>
+                          <Button variant="outline" size="sm" onClick={() => handleZoom('in')}>+</Button>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => handleZoom('reset')} className="w-full">Reset Zoom</Button>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
               </div>
-              
-              <div className="flex items-center gap-3">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setIsPreviewMode(!isPreviewMode)}
-                  title={isPreviewMode ? "Exit Preview" : "Preview Mode"}
-                >
-                  {isPreviewMode ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                  {isPreviewMode ? "Exit Preview" : "Preview"}
-                </Button>
-                <AIAssistantDialog onSuggestion={handleAISuggestion} />
-                <SendCertificateDialog
-                  canvasRef={canvasRef} 
-                  fabricCanvas={fabricCanvas}
-                  certificateId={generateCertificateId()}
-                />
-                <Button variant="outline" size="sm" onClick={handleSave}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save
-                </Button>
-                <Button size="sm" className="btn-hero" onClick={handleExportPDF}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export PNG
-                </Button>
+            </div>
+          )}
+
+          <div className="flex-1 flex flex-col">
+            <EditorToolbar
+              fabricCanvas={fabricCanvas}
+              selectedObject={selectedObject}
+              historyIndex={historyIndex}
+              canvasHistoryLength={canvasHistory.length}
+              isPreviewMode={isPreviewMode}
+              canvasRef={canvasRef}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onToggleLock={toggleLock}
+              onBringToFront={() => { fabricCanvas?.bringObjectToFront(selectedObject); fabricCanvas?.renderAll(); }}
+              onBringForward={() => { fabricCanvas?.bringObjectForward(selectedObject); fabricCanvas?.renderAll(); }}
+              onSendBackward={() => { fabricCanvas?.sendObjectBackwards(selectedObject); fabricCanvas?.renderAll(); }}
+              onSendToBack={() => { fabricCanvas?.sendObjectToBack(selectedObject); fabricCanvas?.renderAll(); }}
+              onDelete={handleDeleteSelected}
+              onTogglePreview={() => setIsPreviewMode(!isPreviewMode)}
+              onCopy={handleCopy}
+              onPaste={handlePaste}
+              onDuplicate={handleDuplicate}
+              onGroup={handleGroup}
+              onUngroup={handleUngroup}
+              onAlignLeft={() => handleAlign('left')}
+              onAlignCenter={() => handleAlign('center')}
+              onAlignRight={() => handleAlign('right')}
+              onAlignTop={() => handleAlign('top')}
+              onAlignMiddle={() => handleAlign('middle')}
+              onAlignBottom={() => handleAlign('bottom')}
+              onSave={handleSave}
+              onExport={handleExport}
+              onAISuggestion={handleAISuggestion}
+              generateCertificateId={generateCertificateId}
+            />
+
+            <div className="flex-1 p-8 overflow-auto bg-muted/20">
+              <div className="flex items-center justify-center min-h-full">
+                <div className="bg-white rounded-lg shadow-strong">
+                  <canvas ref={canvasRef} className="max-w-full max-h-full" />
+                </div>
               </div>
             </div>
           </div>
-
-          {/* Canvas */}
-          <div className="flex-1 p-8 overflow-auto bg-muted/20">
-            <div className="flex items-center justify-center min-h-full">
-              <div className="bg-white rounded-lg shadow-strong">
-                <canvas ref={canvasRef} className="max-w-full max-h-full" />
-              </div>
-            </div>
-          </div>
-        </div>
         </div>
       </div>
     </>
