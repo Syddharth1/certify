@@ -31,8 +31,11 @@ import {
   PositionControls, 
   LayersPanel, 
   TextControls, 
-  ShapeControls 
+  ShapeControls,
+  EditorContextMenu,
+  TemplateQuickSwitch,
 } from "@/components/editor";
+import { useSnapGuides } from "@/hooks/useSnapGuides";
 
 const Editor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -51,6 +54,9 @@ const Editor = () => {
   const [canvasBackground, setCanvasBackground] = useState("#ffffff");
   const [clipboard, setClipboard] = useState<any>(null);
   const [, forceUpdate] = useState({});
+
+  // Initialize snap guides
+  useSnapGuides(fabricCanvas);
 
   const handleAISuggestion = (text: string, type: 'title' | 'message') => {
     if (type === 'title') {
@@ -794,9 +800,25 @@ const Editor = () => {
 
             <div className="flex-1 p-8 overflow-auto bg-muted/20">
               <div className="flex items-center justify-center min-h-full">
-                <div className="bg-white rounded-lg shadow-strong">
-                  <canvas ref={canvasRef} className="max-w-full max-h-full" />
-                </div>
+                <EditorContextMenu
+                  selectedObject={selectedObject}
+                  clipboard={clipboard}
+                  onCopy={handleCopy}
+                  onPaste={handlePaste}
+                  onDuplicate={handleDuplicate}
+                  onDelete={handleDeleteSelected}
+                  onToggleLock={toggleLock}
+                  onBringToFront={() => { fabricCanvas?.bringObjectToFront(selectedObject); fabricCanvas?.renderAll(); }}
+                  onBringForward={() => { fabricCanvas?.bringObjectForward(selectedObject); fabricCanvas?.renderAll(); }}
+                  onSendBackward={() => { fabricCanvas?.sendObjectBackwards(selectedObject); fabricCanvas?.renderAll(); }}
+                  onSendToBack={() => { fabricCanvas?.sendObjectToBack(selectedObject); fabricCanvas?.renderAll(); }}
+                  onGroup={handleGroup}
+                  onUngroup={handleUngroup}
+                >
+                  <div className="bg-white rounded-lg shadow-strong">
+                    <canvas ref={canvasRef} className="max-w-full max-h-full" />
+                  </div>
+                </EditorContextMenu>
               </div>
             </div>
           </div>

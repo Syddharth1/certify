@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SendCertificateDialog } from "@/components/SendCertificateDialog";
 import AIAssistantDialog from "@/components/AIAssistantDialog";
+import { TemplateQuickSwitch } from "./TemplateQuickSwitch";
 
 interface EditorToolbarProps {
   fabricCanvas: any;
@@ -123,6 +124,10 @@ export const EditorToolbar = ({
           >
             <Redo className="h-4 w-4" />
           </Button>
+          
+          <div className="w-px h-6 bg-border mx-1" />
+          
+          <TemplateQuickSwitch fabricCanvas={fabricCanvas} />
           
           <div className="w-px h-6 bg-border mx-1" />
           
