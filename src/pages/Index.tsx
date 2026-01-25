@@ -1,4 +1,4 @@
-import { Award, Shield, Sparkles, Users, Code, FileCheck, QrCode, Palette, Download, ChevronDown } from "lucide-react";
+import { Award, Shield, Sparkles, Users, Code, FileCheck, QrCode, Palette, Download, ChevronDown, Mail, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -212,6 +212,153 @@ const Index = () => {
                 <p className="text-muted-foreground leading-relaxed">Intuitive drag-and-drop editor makes certificate creation effortless</p>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section className="py-32 bg-gradient-to-b from-background via-primary/5 to-background relative overflow-hidden">
+        {/* Decorative dots */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-primary/30 rounded-full"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 3}s`,
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="container mx-auto px-8 relative z-10">
+          <div className="text-center mb-20">
+            <div className="inline-block mb-4 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20">
+              <span className="text-sm font-medium text-primary">How It Works</span>
+            </div>
+            <h2 className="text-5xl font-display font-bold text-foreground mb-6">Three Simple Steps</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              From design to verification, our streamlined process makes certificate management effortless
+            </p>
+          </div>
+
+          <div className="max-w-6xl mx-auto space-y-24">
+            {/* Step 1: Create */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className="order-2 lg:order-1">
+                <div className="w-14 h-14 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6">
+                  <Award className="w-7 h-7 text-primary" />
+                </div>
+                <span className="text-6xl font-display font-bold text-primary/20 absolute -mt-16 -ml-4">01</span>
+                <h3 className="text-4xl font-display font-bold text-foreground mb-4">Create</h3>
+                <p className="text-lg text-muted-foreground leading-relaxed mb-8">
+                  Choose from 100+ professionally designed templates or build from scratch with our intuitive AI-powered editor. Customize every detail to match your brand identity.
+                </p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <span className="text-foreground">Drag-and-drop editor</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <span className="text-foreground">Custom branding options</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <span className="text-foreground">Professional templates</span>
+                  </div>
+                </div>
+              </div>
+              <div className="order-1 lg:order-2 relative">
+                <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-gradient-to-br from-muted/50 to-background">
+                  <div className="aspect-[4/3] bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center">
+                    <div className="text-center text-muted-foreground">
+                      <Award className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                      <p className="text-sm">Image placeholder</p>
+                    </div>
+                  </div>
+                  <span className="absolute bottom-6 left-6 text-6xl font-display font-bold text-primary/50">01</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: Send */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className="relative">
+                <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-gradient-to-br from-muted/50 to-background">
+                  <div className="aspect-[4/3] bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center">
+                    <div className="text-center text-muted-foreground">
+                      <Mail className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                      <p className="text-sm">Image placeholder</p>
+                    </div>
+                  </div>
+                  <span className="absolute bottom-6 left-6 text-6xl font-display font-bold text-primary/50">02</span>
+                </div>
+              </div>
+              <div className="lg:border-l lg:border-border/30 lg:pl-12">
+                <div className="w-14 h-14 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6">
+                  <Mail className="w-7 h-7 text-primary" />
+                </div>
+                <h3 className="text-4xl font-display font-bold text-foreground mb-4">Send</h3>
+                <p className="text-lg text-muted-foreground leading-relaxed mb-8">
+                  Distribute certificates instantly via email, SMS, or direct download. Track delivery status and recipient engagement in real-time with our advanced analytics dashboard.
+                </p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <span className="text-foreground">Lightning fast delivery</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <span className="text-foreground">Secure & encrypted</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <span className="text-foreground">Real-time tracking</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: Verify */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className="order-2 lg:order-1">
+                <div className="w-14 h-14 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6">
+                  <QrCode className="w-7 h-7 text-primary" />
+                </div>
+                <h3 className="text-4xl font-display font-bold text-foreground mb-4">Verify</h3>
+                <p className="text-lg text-muted-foreground leading-relaxed mb-8">
+                  Recipients and verifiers can instantly authenticate certificates by scanning the unique QR code. Powered by secure cryptographic technology for unparalleled security and trust.
+                </p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <span className="text-foreground">Instant verification</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <span className="text-foreground">Tamper-proof records</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <span className="text-foreground">Global accessibility</span>
+                  </div>
+                </div>
+              </div>
+              <div className="order-1 lg:order-2 relative lg:border-l lg:border-border/30 lg:pl-12">
+                <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-gradient-to-br from-muted/50 to-background">
+                  <div className="aspect-[4/3] bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center">
+                    <div className="text-center text-muted-foreground">
+                      <QrCode className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                      <p className="text-sm">Image placeholder</p>
+                    </div>
+                  </div>
+                  <span className="absolute bottom-6 left-6 text-6xl font-display font-bold text-primary/50">03</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
