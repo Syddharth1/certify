@@ -8,6 +8,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { CaseStudies } from "@/components/CaseStudies";
 import { SkipToContent } from "@/components/SkipToContent";
 
+// 3D Icons for feature cards
+import iconTemplates from "@/assets/icon-templates.png";
+import iconVerification from "@/assets/icon-verification.png";
+import iconEasy from "@/assets/icon-easy.png";
+
 const Index = () => {
   const { user } = useAuth();
 
@@ -182,8 +187,8 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-6xl mx-auto">
             <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-2 border-2 bg-gradient-to-br from-card to-muted/20">
               <CardContent className="p-10 text-center">
-                <div className="bg-gradient-to-br from-accent-gold to-accent-gold/70 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform shadow-gold">
-                  <Award className="h-10 w-10 text-white" />
+                <div className="w-24 h-24 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                  <img src={iconTemplates} alt="Professional Templates" className="w-full h-full object-contain drop-shadow-lg" />
                 </div>
                 <h3 className="text-2xl font-bold text-foreground mb-4">Professional Templates</h3>
                 <p className="text-muted-foreground leading-relaxed">Choose from dozens of professionally designed certificate templates</p>
@@ -191,8 +196,8 @@ const Index = () => {
             </Card>
             <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-2 border-2 bg-gradient-to-br from-card to-muted/20">
               <CardContent className="p-10 text-center">
-                <div className="bg-gradient-to-br from-success to-success/70 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-success/30">
-                  <Shield className="h-10 w-10 text-white" />
+                <div className="w-24 h-24 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                  <img src={iconVerification} alt="QR Verification" className="w-full h-full object-contain drop-shadow-lg" />
                 </div>
                 <h3 className="text-2xl font-bold text-foreground mb-4">QR Verification</h3>
                 <p className="text-muted-foreground leading-relaxed">Built-in QR codes ensure your certificates are authentic and verifiable</p>
@@ -200,8 +205,8 @@ const Index = () => {
             </Card>
             <Card className="group hover:shadow-xl transition-all duration-500 hover:-translate-y-2 border-2 bg-gradient-to-br from-card to-muted/20">
               <CardContent className="p-10 text-center">
-                <div className="bg-gradient-to-br from-primary to-primary/70 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform shadow-glow">
-                  <Sparkles className="h-10 w-10 text-white" />
+                <div className="w-24 h-24 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                  <img src={iconEasy} alt="Easy to Use" className="w-full h-full object-contain drop-shadow-lg" />
                 </div>
                 <h3 className="text-2xl font-bold text-foreground mb-4">Easy to Use</h3>
                 <p className="text-muted-foreground leading-relaxed">Intuitive drag-and-drop editor makes certificate creation effortless</p>
