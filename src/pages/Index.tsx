@@ -13,6 +13,11 @@ import iconTemplates from "@/assets/icon-templates.png";
 import iconVerification from "@/assets/icon-verification.png";
 import iconEasy from "@/assets/icon-easy.png";
 
+// How It Works images
+import howItWorksCreate from "@/assets/how-it-works-create.png";
+import howItWorksSend from "@/assets/how-it-works-send.png";
+import howItWorksVerify from "@/assets/how-it-works-verify.png";
+
 const Index = () => {
   const { user } = useAuth();
 
@@ -273,12 +278,11 @@ const Index = () => {
               </div>
               <div className="order-1 lg:order-2 relative">
                 <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-gradient-to-br from-muted/50 to-background">
-                  <div className="aspect-[4/3] bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center">
-                    <div className="text-center text-muted-foreground">
-                      <Award className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                      <p className="text-sm">Image placeholder</p>
-                    </div>
-                  </div>
+                  <img 
+                    src={howItWorksCreate} 
+                    alt="Certificate Editor Interface" 
+                    className="w-full h-auto"
+                  />
                   <span className="absolute bottom-6 left-6 text-6xl font-display font-bold text-primary/50">01</span>
                 </div>
               </div>
@@ -288,12 +292,11 @@ const Index = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div className="relative">
                 <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-gradient-to-br from-muted/50 to-background">
-                  <div className="aspect-[4/3] bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center">
-                    <div className="text-center text-muted-foreground">
-                      <Mail className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                      <p className="text-sm">Image placeholder</p>
-                    </div>
-                  </div>
+                  <img 
+                    src={howItWorksSend} 
+                    alt="Send Certificate Dialog" 
+                    className="w-full h-auto"
+                  />
                   <span className="absolute bottom-6 left-6 text-6xl font-display font-bold text-primary/50">02</span>
                 </div>
               </div>
@@ -349,12 +352,11 @@ const Index = () => {
               </div>
               <div className="order-1 lg:order-2 relative lg:border-l lg:border-border/30 lg:pl-12">
                 <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-gradient-to-br from-muted/50 to-background">
-                  <div className="aspect-[4/3] bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center">
-                    <div className="text-center text-muted-foreground">
-                      <QrCode className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                      <p className="text-sm">Image placeholder</p>
-                    </div>
-                  </div>
+                  <img 
+                    src={howItWorksVerify} 
+                    alt="Certificate Verification Page" 
+                    className="w-full h-auto"
+                  />
                   <span className="absolute bottom-6 left-6 text-6xl font-display font-bold text-primary/50">03</span>
                 </div>
               </div>
