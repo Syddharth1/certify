@@ -108,10 +108,6 @@ const Index = () => {
       <section className="color-bends-bg text-white py-32 md:py-40 relative overflow-hidden">
         <div className="container mx-auto px-6 md:px-8 text-center relative z-10">
           <div className="max-w-5xl mx-auto">
-            <div className="inline-flex items-center gap-2 mb-8 px-5 py-2.5 bg-white/10 backdrop-blur-md rounded-full border border-white/20 animate-fade-in">
-              <Sparkles className="h-4 w-4 text-accent-gold" />
-              <span className="text-sm font-medium tracking-wide">Trusted by 10,000+ Organizations Worldwide</span>
-            </div>
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-6 leading-[1.1] tracking-tight animate-fade-in">
               Create, Verify & Share<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-gold via-white to-accent-gold animate-pulse">Professional Certificates</span>
@@ -124,22 +120,6 @@ const Index = () => {
             <p className="text-base md:text-lg text-white/70 mb-10 max-w-3xl mx-auto leading-relaxed animate-fade-in">
               Design stunning certificates in minutes, not hours. Our drag-and-drop editor and professional templates make it effortless to create, distribute, and verify credentials.
             </p>
-
-            {/* Trust Indicators */}
-            <div className="flex flex-wrap justify-center gap-6 mb-10 text-sm text-white/60 animate-fade-in">
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-success" />
-                <span>Bank-level Security</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Award className="h-4 w-4 text-accent-gold" />
-                <span>50+ Templates</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary-glow" />
-                <span>1M+ Certificates Issued</span>
-              </div>
-            </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in">
               {user ? (
@@ -172,7 +152,7 @@ const Index = () => {
                 </>
               )}
             </div>
-            <p className="mt-6 text-sm text-white/50">No credit card required • Free forever plan • Setup in 2 minutes</p>
+            
           </div>
         </div>
       </section>
