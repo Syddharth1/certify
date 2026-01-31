@@ -5,7 +5,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { CaseStudies } from "@/components/CaseStudies";
+
 import { SkipToContent } from "@/components/SkipToContent";
 
 // 3D Icons for feature cards
@@ -496,65 +496,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-24 bg-muted/30">
-        <div className="container mx-auto px-6 md:px-8">
-          <div className="text-center mb-16">
-            <div className="inline-block mb-4 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20">
-              <span className="text-sm font-medium text-primary">Testimonials</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">Loved by Teams Worldwide</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              See what our customers have to say about their experience
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {[
-              {
-                quote: "This platform transformed how we issue certificates. The QR verification feature gives our recipients confidence in authenticity.",
-                author: "Sarah Chen",
-                role: "HR Director",
-                company: "TechCorp Inc."
-              },
-              {
-                quote: "We've cut certificate creation time by 80%. The templates are beautiful and the editor is incredibly intuitive.",
-                author: "Michael Rodriguez",
-                role: "Training Manager",
-                company: "Global Academy"
-              },
-              {
-                quote: "The best certificate platform we've used. Professional results, easy to use, and excellent customer support.",
-                author: "Emma Thompson",
-                role: "Operations Lead",
-                company: "StartupXYZ"
-              }
-            ].map((testimonial, index) => (
-              <Card key={index} className="group bg-card border-2 hover:border-primary/30 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                <CardContent className="p-8">
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Sparkles key={i} className="h-4 w-4 text-accent-gold fill-accent-gold" />
-                    ))}
-                  </div>
-                  <p className="text-foreground mb-6 leading-relaxed italic">"{testimonial.quote}"</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center text-white font-semibold text-sm">
-                      {testimonial.author.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground text-sm">{testimonial.author}</p>
-                      <p className="text-muted-foreground text-xs">{testimonial.role}, {testimonial.company}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Case Studies Section */}
-      <CaseStudies />
 
       {/* Call to Action with Color Bends Background */}
       <section className="py-32 color-bends-bg text-white relative">
