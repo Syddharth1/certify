@@ -6,12 +6,56 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// OpenTimestamps calendar servers
-const OTS_CALENDARS = [
-  "https://a.pool.opentimestamps.org",
-  "https://b.pool.opentimestamps.org",
-  "https://a.pool.eternitywall.com"
-];
+// ============= Security Utilities =============
+
+const ErrorCodes = {
+  INVALID_INPUT: 'INPUT_001',
+  NOT_FOUND: 'DATA_001',
+  PROCESSING_ERROR: 'PROC_001',
+  GENERAL_ERROR: 'ERR_001',
+} as const;
+
+type ErrorCode = typeof ErrorCodes[keyof typeof ErrorCodes];
+
+const clientErrorMessages: Record<ErrorCode, string> = {
+  [ErrorCodes.INVALID_INPUT]: 'Invalid input data',
+  [ErrorCodes.NOT_FOUND]: 'Resource not found',
+  [ErrorCodes.PROCESSING_ERROR]: 'Unable to process request',
+  [ErrorCodes.GENERAL_ERROR]: 'An error occurred. Please try again.',
+};
+
+const errorStatusCodes: Record<ErrorCode, number> = {
+  [ErrorCodes.INVALID_INPUT]: 400,
+  [ErrorCodes.NOT_FOUND]: 404,
+  [ErrorCodes.PROCESSING_ERROR]: 500,
+  [ErrorCodes.GENERAL_ERROR]: 500,
+};
+
+/**
+ * Create sanitized error response - never expose internal details
+ */
+function createErrorResponse(
+  error: unknown,
+  code: ErrorCode,
+  corsHeaders: Record<string, string>
+): Response {
+  // Log detailed error server-side only
+  console.error(`[${code}] Error in timestamp-certificate:`, error);
+  
+  return new Response(
+    JSON.stringify({
+      success: false,
+      error: clientErrorMessages[code],
+      code,
+    }),
+    {
+      status: errorStatusCodes[code],
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    }
+  );
+}
+
+// ============= Input Validation =============
 
 interface TimestampRequest {
   action: 'create' | 'verify';
@@ -19,6 +63,47 @@ interface TimestampRequest {
   verificationId?: string;
   certificateData?: string;
 }
+
+function validateInput(input: unknown): { valid: boolean; error?: string; data?: TimestampRequest } {
+  if (!input || typeof input !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const data = input as Record<string, unknown>;
+
+  // Validate action
+  if (!data.action || typeof data.action !== 'string' || !['create', 'verify'].includes(data.action)) {
+    return { valid: false, error: 'action must be create or verify' };
+  }
+
+  // Validate optional string fields
+  const validateOptionalString = (field: string, maxLength: number): string | undefined => {
+    if (data[field] === undefined || data[field] === null) return undefined;
+    if (typeof data[field] !== 'string') return undefined;
+    const value = (data[field] as string).trim();
+    if (value.length === 0 || value.length > maxLength) return undefined;
+    return value;
+  };
+
+  return {
+    valid: true,
+    data: {
+      action: data.action as 'create' | 'verify',
+      certificateId: validateOptionalString('certificateId', 100),
+      verificationId: validateOptionalString('verificationId', 100),
+      certificateData: typeof data.certificateData === 'string' ? data.certificateData : undefined,
+    },
+  };
+}
+
+// ============= OpenTimestamps Logic =============
+
+// OpenTimestamps calendar servers
+const OTS_CALENDARS = [
+  "https://a.pool.opentimestamps.org",
+  "https://b.pool.opentimestamps.org",
+  "https://a.pool.eternitywall.com"
+];
 
 // Create SHA-256 hash of data
 async function createHash(data: string): Promise<string> {
@@ -64,9 +149,6 @@ async function submitToCalendar(hash: string): Promise<{ success: boolean; proof
 
 // Check if timestamp is confirmed on blockchain
 async function checkTimestampStatus(hash: string, proof: string): Promise<{ confirmed: boolean; timestamp?: string; txId?: string }> {
-  // For now, we'll check if the proof has been upgraded by trying to verify it
-  // OpenTimestamps proofs are "pending" initially and get upgraded when anchored to Bitcoin
-  
   try {
     // Decode the stored proof
     const proofBytes = Uint8Array.from(atob(proof), c => c.charCodeAt(0));
@@ -101,6 +183,8 @@ async function checkTimestampStatus(hash: string, proof: string): Promise<{ conf
   return { confirmed: false };
 }
 
+// ============= Main Handler =============
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -111,14 +195,22 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, certificateId, verificationId, certificateData }: TimestampRequest = await req.json();
+    // Validate input
+    const rawInput = await req.json();
+    const validation = validateInput(rawInput);
+    
+    if (!validation.valid || !validation.data) {
+      throw { code: ErrorCodes.INVALID_INPUT };
+    }
+
+    const { action, certificateId, verificationId, certificateData } = validation.data;
     
     console.log(`Timestamp action: ${action}`);
 
     if (action === 'create') {
       // Create new timestamp for certificate
       if (!certificateId && !certificateData) {
-        throw new Error("certificateId or certificateData required for create action");
+        throw { code: ErrorCodes.INVALID_INPUT };
       }
 
       let dataToHash: string;
@@ -135,7 +227,7 @@ const handler = async (req: Request): Promise<Response> => {
           .single();
         
         if (fetchError || !cert) {
-          throw new Error("Certificate not found");
+          throw { code: ErrorCodes.NOT_FOUND };
         }
         
         dataToHash = JSON.stringify(cert.certificate_data);
@@ -144,17 +236,17 @@ const handler = async (req: Request): Promise<Response> => {
 
       // Create hash
       const hash = await createHash(dataToHash);
-      console.log(`Created hash: ${hash}`);
+      console.log(`Created hash for certificate`);
 
       // Submit to OpenTimestamps
       const result = await submitToCalendar(hash);
       
       if (!result.success) {
-        console.error('Failed to submit timestamp:', result.error);
+        console.error('Failed to submit timestamp');
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: result.error,
+            error: 'Unable to create timestamp',
             hash: hash 
           }),
           { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -174,7 +266,7 @@ const handler = async (req: Request): Promise<Response> => {
           .eq('id', certificateId);
         
         if (updateError) {
-          console.error('Failed to update certificate:', updateError);
+          console.error('Failed to update certificate with timestamp');
         }
       }
 
@@ -192,7 +284,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (action === 'verify') {
       // Verify existing timestamp
       if (!verificationId) {
-        throw new Error("verificationId required for verify action");
+        throw { code: ErrorCodes.INVALID_INPUT };
       }
 
       const { data: cert, error: fetchError } = await supabase
@@ -262,14 +354,17 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    throw new Error("Invalid action. Use 'create' or 'verify'");
+    throw { code: ErrorCodes.INVALID_INPUT };
 
-  } catch (error: any) {
-    console.error("Error in timestamp-certificate function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
+  } catch (error: unknown) {
+    // Check for typed error with code
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+      const typedError = error as { code: ErrorCode };
+      return createErrorResponse(error, typedError.code, corsHeaders);
+    }
+    
+    // Generic error
+    return createErrorResponse(error, ErrorCodes.GENERAL_ERROR, corsHeaders);
   }
 };
 

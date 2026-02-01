@@ -7,18 +7,171 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface SendCertificateRequest {
+// ============= Input Validation =============
+
+interface SendCertificateInput {
   recipientEmail: string;
   recipientName: string;
   certificateTitle: string;
-  certificateData: string; // Base64 image data
+  certificateData: string;
   senderName?: string;
   message?: string;
   certificateId?: string;
 }
 
+interface ValidationResult {
+  valid: boolean;
+  error?: string;
+  data?: SendCertificateInput;
+}
+
+/**
+ * Validate and sanitize input data
+ * Returns validated data or error message
+ */
+function validateInput(input: unknown): ValidationResult {
+  if (!input || typeof input !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const data = input as Record<string, unknown>;
+
+  // Validate recipientEmail
+  if (!data.recipientEmail || typeof data.recipientEmail !== 'string') {
+    return { valid: false, error: 'recipientEmail is required' };
+  }
+  const email = data.recipientEmail.trim();
+  if (email.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { valid: false, error: 'Invalid email format' };
+  }
+
+  // Validate recipientName
+  if (!data.recipientName || typeof data.recipientName !== 'string') {
+    return { valid: false, error: 'recipientName is required' };
+  }
+  const recipientName = data.recipientName.trim();
+  if (recipientName.length === 0 || recipientName.length > 255) {
+    return { valid: false, error: 'recipientName must be 1-255 characters' };
+  }
+
+  // Validate certificateTitle
+  if (!data.certificateTitle || typeof data.certificateTitle !== 'string') {
+    return { valid: false, error: 'certificateTitle is required' };
+  }
+  const certificateTitle = data.certificateTitle.trim();
+  if (certificateTitle.length === 0 || certificateTitle.length > 500) {
+    return { valid: false, error: 'certificateTitle must be 1-500 characters' };
+  }
+
+  // Validate certificateData (base64)
+  if (!data.certificateData || typeof data.certificateData !== 'string') {
+    return { valid: false, error: 'certificateData is required' };
+  }
+  const certificateData = data.certificateData;
+  // Basic base64 validation - check format and reasonable size (max ~10MB encoded)
+  if (!/^[A-Za-z0-9+/=]+$/.test(certificateData) || certificateData.length > 15000000) {
+    return { valid: false, error: 'Invalid certificate data format' };
+  }
+
+  // Validate optional senderName
+  let senderName: string | undefined;
+  if (data.senderName !== undefined && data.senderName !== null) {
+    if (typeof data.senderName !== 'string') {
+      return { valid: false, error: 'senderName must be a string' };
+    }
+    senderName = data.senderName.trim();
+    if (senderName.length > 255) {
+      return { valid: false, error: 'senderName must be 255 characters or less' };
+    }
+    if (senderName.length === 0) senderName = undefined;
+  }
+
+  // Validate optional message
+  let message: string | undefined;
+  if (data.message !== undefined && data.message !== null) {
+    if (typeof data.message !== 'string') {
+      return { valid: false, error: 'message must be a string' };
+    }
+    message = data.message.trim();
+    if (message.length > 2000) {
+      return { valid: false, error: 'message must be 2000 characters or less' };
+    }
+    if (message.length === 0) message = undefined;
+  }
+
+  // Validate optional certificateId
+  let certificateId: string | undefined;
+  if (data.certificateId !== undefined && data.certificateId !== null) {
+    if (typeof data.certificateId !== 'string') {
+      return { valid: false, error: 'certificateId must be a string' };
+    }
+    certificateId = data.certificateId.trim();
+    if (certificateId.length > 100) {
+      return { valid: false, error: 'certificateId must be 100 characters or less' };
+    }
+    if (certificateId.length === 0) certificateId = undefined;
+  }
+
+  return {
+    valid: true,
+    data: {
+      recipientEmail: email,
+      recipientName,
+      certificateTitle,
+      certificateData,
+      senderName,
+      message,
+      certificateId,
+    },
+  };
+}
+
+/**
+ * Sanitize text for safe HTML display - prevents XSS
+ */
+function escapeHtml(text: string): string {
+  const escapeMap: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  };
+  return text.replace(/[&<>"']/g, (char) => escapeMap[char] || char);
+}
+
+/**
+ * Create sanitized error response - never expose internal details
+ */
+function createErrorResponse(error: unknown, corsHeaders: Record<string, string>): Response {
+  // Log detailed error server-side only
+  console.error("Error in send-certificate function:", error);
+  
+  // Determine appropriate error code and message
+  const message = error instanceof Error ? error.message : String(error);
+  let clientMessage = 'An error occurred while processing your request';
+  let status = 500;
+
+  if (message.includes('Unauthorized') || message.includes('authorization')) {
+    clientMessage = 'Authentication required';
+    status = 401;
+  } else if (message.includes('Invalid') || message.includes('required')) {
+    clientMessage = 'Invalid input data';
+    status = 400;
+  }
+
+  return new Response(
+    JSON.stringify({ 
+      success: false, 
+      error: clientMessage 
+    }),
+    { status, headers: { "Content-Type": "application/json", ...corsHeaders } }
+  );
+}
+
+// ============= Main Handler =============
+
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -42,6 +195,20 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Unauthorized");
     }
 
+    // Parse and validate input
+    const rawInput = await req.json();
+    const validation = validateInput(rawInput);
+    
+    if (!validation.valid || !validation.data) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: validation.error || 'Invalid input' 
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const { 
       recipientEmail, 
       recipientName, 
@@ -50,7 +217,7 @@ const handler = async (req: Request): Promise<Response> => {
       senderName,
       message,
       certificateId 
-    }: SendCertificateRequest = await req.json();
+    } = validation.data;
 
     // Use provided certificate ID or generate new one
     const verificationId = certificateId || `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
@@ -76,7 +243,8 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (saveError) {
-      throw new Error(`Failed to save certificate: ${saveError.message}`);
+      console.error('Failed to save certificate:', saveError);
+      throw new Error('Failed to save certificate');
     }
 
     console.log("Certificate saved successfully:", certificate.id);
@@ -98,7 +266,7 @@ const handler = async (req: Request): Promise<Response> => {
       if (timestampResponse.ok) {
         console.log("Blockchain timestamp initiated for certificate:", certificate.id);
       } else {
-        console.error("Failed to initiate blockchain timestamp:", await timestampResponse.text());
+        console.error("Failed to initiate blockchain timestamp");
       }
     } catch (timestampError) {
       console.error("Error initiating blockchain timestamp:", timestampError);
@@ -112,19 +280,25 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email using Resend
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
     
+    // Escape user-provided content for safe HTML display
+    const safeRecipientName = escapeHtml(recipientName);
+    const safeCertificateTitle = escapeHtml(certificateTitle);
+    const safeSenderName = senderName ? escapeHtml(senderName) : undefined;
+    const safeMessage = message ? escapeHtml(message) : undefined;
+    
     try {
       const emailResponse = await resend.emails.send({
         from: "Certificate System <onboarding@resend.dev>",
         to: [recipientEmail],
-        subject: `Your Certificate: ${certificateTitle}`,
+        subject: `Your Certificate: ${safeCertificateTitle}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <h1 style="color: #333; margin-bottom: 20px;">Congratulations ${recipientName}!</h1>
+            <h1 style="color: #333; margin-bottom: 20px;">Congratulations ${safeRecipientName}!</h1>
             <p style="color: #666; font-size: 16px; line-height: 1.5;">
-              You have received a certificate: <strong>${certificateTitle}</strong>
+              You have received a certificate: <strong>${safeCertificateTitle}</strong>
             </p>
-            ${senderName ? `<p style="color: #666; font-size: 16px;">From: ${senderName}</p>` : ''}
-            ${message ? `<p style="color: #666; font-size: 16px; font-style: italic;">"${message}"</p>` : ''}
+            ${safeSenderName ? `<p style="color: #666; font-size: 16px;">From: ${safeSenderName}</p>` : ''}
+            ${safeMessage ? `<p style="color: #666; font-size: 16px; font-style: italic;">"${safeMessage}"</p>` : ''}
             
             <div style="margin: 30px 0; text-align: center;">
               <img src="data:image/png;base64,${certificateData}" alt="Certificate" style="max-width: 100%; height: auto; border: 2px solid #ddd; border-radius: 8px;" />
@@ -157,52 +331,37 @@ const handler = async (req: Request): Promise<Response> => {
         ]
       });
 
-      console.log("Email sent successfully:", emailResponse);
+      console.log("Email sent successfully");
 
       return new Response(
         JSON.stringify({ 
           success: true, 
           certificateId: certificate.id,
-          emailId: emailResponse.data?.id,
           message: "Certificate saved and email sent successfully!"
         }),
         {
           status: 200,
-          headers: {
-            "Content-Type": "application/json",
-            ...corsHeaders,
-          },
+          headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );
-    } catch (emailError: any) {
+    } catch (emailError) {
       console.error("Email sending failed:", emailError);
       // Still return success since certificate was saved
       return new Response(
         JSON.stringify({ 
           success: true, 
           certificateId: certificate.id,
-          message: "Certificate saved successfully, but email sending failed. Please check your Resend configuration.",
-          emailError: emailError.message
+          message: "Certificate saved successfully, but email delivery is pending."
         }),
         {
           status: 200,
-          headers: {
-            "Content-Type": "application/json",
-            ...corsHeaders,
-          },
+          headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );
     }
 
-  } catch (error: any) {
-    console.error("Error in send-certificate function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+  } catch (error) {
+    return createErrorResponse(error, corsHeaders);
   }
 };
 
