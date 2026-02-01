@@ -12,6 +12,7 @@ import Navigation from "@/components/Navigation";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { ListItemSkeleton } from "@/components/LoadingSkeleton";
 import { SkipToContent } from "@/components/SkipToContent";
+import { BlockchainStatusBadge } from "@/components/BlockchainStatus";
 
 const UserDashboard = () => {
   const { user } = useAuth();
@@ -202,7 +203,10 @@ const UserDashboard = () => {
                             Issued: {new Date(cert.issued_date).toLocaleDateString()}
                           </p>
                         </div>
-                        <Badge variant="outline">Created</Badge>
+                        <div className="flex items-center gap-2">
+                          <BlockchainStatusBadge status={cert.blockchain_status} />
+                          <Badge variant="outline">Created</Badge>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -259,6 +263,7 @@ const UserDashboard = () => {
                             <Download className="h-4 w-4 mr-2" />
                             Download
                           </Button>
+                          <BlockchainStatusBadge status={cert.blockchain_status} />
                           <Badge variant="secondary">Received</Badge>
                         </div>
                       </div>
