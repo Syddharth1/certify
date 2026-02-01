@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { QrCode, Shield, CheckCircle, XCircle, Search, ExternalLink, Link2, Clock } from "lucide-react";
+import { QrCode, Shield, CheckCircle, XCircle, Search, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import QRScanner from "@/components/QRScanner";
 import Navigation from "@/components/Navigation";
-import { BlockchainStatus } from "@/components/BlockchainStatus";
 
 const Verify = () => {
   const [verificationCode, setVerificationCode] = useState("");
@@ -56,11 +55,7 @@ const Verify = () => {
             issueDate: certificate.issued_date ? new Date(certificate.issued_date).toLocaleDateString() : "Unknown",
             verificationDate: new Date().toLocaleString(),
             credentialId: certificate.verification_id,
-            certificateUrl: `/certificate/${certificate.verification_id}`,
-            blockchainStatus: certificate.blockchain_status,
-            blockchainHash: certificate.blockchain_hash,
-            blockchainTimestamp: certificate.blockchain_timestamp,
-            blockchainTxId: certificate.blockchain_tx_id
+            certificateUrl: `/certificate/${certificate.verification_id}`
           },
           error: null
         });
@@ -256,14 +251,6 @@ const Verify = () => {
                           </Button>
                         </div>
                       )}
-                    </div>
-
-                    {/* Blockchain Verification Section */}
-                    <div className="pt-4 border-t border-border">
-                      <BlockchainStatus 
-                        verificationId={verificationResult.certificate.id} 
-                        variant="full" 
-                      />
                     </div>
                   </div>
                 </CardContent>
