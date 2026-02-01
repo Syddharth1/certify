@@ -7,10 +7,94 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ============= Security Utilities =============
+
+const ErrorCodes = {
+  AUTH_REQUIRED: 'AUTH_001',
+  RATE_LIMITED: 'AUTH_003',
+  INVALID_INPUT: 'INPUT_001',
+  PROCESSING_ERROR: 'PROC_001',
+  GENERAL_ERROR: 'ERR_001',
+} as const;
+
+type ErrorCode = typeof ErrorCodes[keyof typeof ErrorCodes];
+
+const clientErrorMessages: Record<ErrorCode, string> = {
+  [ErrorCodes.AUTH_REQUIRED]: 'Authentication required',
+  [ErrorCodes.RATE_LIMITED]: 'Rate limit exceeded. You can make up to 10 AI requests per hour. Please try again later.',
+  [ErrorCodes.INVALID_INPUT]: 'Invalid input data',
+  [ErrorCodes.PROCESSING_ERROR]: 'Unable to process request',
+  [ErrorCodes.GENERAL_ERROR]: 'An error occurred. Please try again.',
+};
+
+const errorStatusCodes: Record<ErrorCode, number> = {
+  [ErrorCodes.AUTH_REQUIRED]: 401,
+  [ErrorCodes.RATE_LIMITED]: 429,
+  [ErrorCodes.INVALID_INPUT]: 400,
+  [ErrorCodes.PROCESSING_ERROR]: 500,
+  [ErrorCodes.GENERAL_ERROR]: 500,
+};
+
+/**
+ * Create sanitized error response - never expose internal details
+ */
+function createErrorResponse(
+  error: unknown,
+  code: ErrorCode,
+  corsHeaders: Record<string, string>
+): Response {
+  // Log detailed error server-side only
+  console.error(`[${code}] Error in ai-assistant:`, error);
+  
+  return new Response(
+    JSON.stringify({
+      success: false,
+      error: clientErrorMessages[code],
+      code,
+    }),
+    {
+      status: errorStatusCodes[code],
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    }
+  );
+}
+
+// ============= Input Validation =============
+
 interface AIRequest {
   prompt: string;
   type: 'title' | 'message' | 'general';
 }
+
+function validateInput(input: unknown): { valid: boolean; error?: string; data?: AIRequest } {
+  if (!input || typeof input !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const data = input as Record<string, unknown>;
+
+  // Validate prompt
+  if (!data.prompt || typeof data.prompt !== 'string') {
+    return { valid: false, error: 'prompt is required' };
+  }
+  const prompt = data.prompt.trim();
+  if (prompt.length === 0 || prompt.length > 2000) {
+    return { valid: false, error: 'prompt must be 1-2000 characters' };
+  }
+
+  // Validate type
+  const validTypes = ['title', 'message', 'general'];
+  if (!data.type || typeof data.type !== 'string' || !validTypes.includes(data.type)) {
+    return { valid: false, error: 'type must be title, message, or general' };
+  }
+
+  return {
+    valid: true,
+    data: { prompt, type: data.type as 'title' | 'message' | 'general' },
+  };
+}
+
+// ============= Main Handler =============
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -34,13 +118,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     
     if (authError || !user) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Authentication required' 
-      }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      throw { code: ErrorCodes.AUTH_REQUIRED };
     }
 
     // Check rate limit (10 requests per hour)
@@ -52,23 +130,26 @@ serve(async (req) => {
       .gte('created_at', oneHourAgo);
 
     if (countError) {
-      console.error('Error checking rate limit:', countError);
+      console.error('Rate limit check failed:', countError);
     } else if (recentRequests && recentRequests.length >= 10) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Rate limit exceeded. You can make up to 10 AI requests per hour. Please try again later.' 
-      }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      throw { code: ErrorCodes.RATE_LIMITED };
     }
 
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
     if (!geminiApiKey) {
-      throw new Error('Gemini API key not configured');
+      console.error('Gemini API key not configured');
+      throw { code: ErrorCodes.PROCESSING_ERROR };
     }
 
-    const { prompt, type }: AIRequest = await req.json();
+    // Validate input
+    const rawInput = await req.json();
+    const validation = validateInput(rawInput);
+    
+    if (!validation.valid || !validation.data) {
+      throw { code: ErrorCodes.INVALID_INPUT };
+    }
+
+    const { prompt, type } = validation.data;
 
     let systemPrompt = '';
     switch (type) {
@@ -108,19 +189,18 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('Gemini API error:', error);
-      throw new Error(`Gemini API error: ${response.status}`);
+      console.error('Gemini API returned status:', response.status);
+      throw { code: ErrorCodes.PROCESSING_ERROR };
     }
 
     const data = await response.json();
-    console.log('Gemini API response:', JSON.stringify(data, null, 2));
+    console.log('AI response received successfully');
     
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     
     if (!generatedText) {
-      console.error('No text generated. Full response:', JSON.stringify(data));
-      throw new Error('No response generated from AI model');
+      console.error('No text generated from AI model');
+      throw { code: ErrorCodes.PROCESSING_ERROR };
     }
 
     // Log successful request
@@ -138,14 +218,14 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
-    console.error('Error in ai-assistant function:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: error.message 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  } catch (error: unknown) {
+    // Check for typed error with code
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+      const typedError = error as { code: ErrorCode };
+      return createErrorResponse(error, typedError.code, corsHeaders);
+    }
+    
+    // Generic error
+    return createErrorResponse(error, ErrorCodes.GENERAL_ERROR, corsHeaders);
   }
 });
