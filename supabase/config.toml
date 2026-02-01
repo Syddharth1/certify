@@ -16,6 +16,12 @@ verify_jwt = true
 [functions.get-user-certificates]
 verify_jwt = true
 
+[functions.timestamp-certificate]
+verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = true
+
 [db]
 shadow_port = 54322
 major_version = 15
