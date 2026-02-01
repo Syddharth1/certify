@@ -8,6 +8,7 @@ import { Download, Shield, Calendar, User, Award } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import Navigation from "@/components/Navigation";
+import { BlockchainStatus } from "@/components/BlockchainStatus";
 
 interface Certificate {
   id: string;
@@ -202,6 +203,11 @@ const Certificate = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Blockchain Verification Status */}
+        <div className="max-w-2xl mx-auto mb-8">
+          <BlockchainStatus verificationId={certificate.verification_id} variant="full" />
         </div>
 
         {/* Verification Info */}

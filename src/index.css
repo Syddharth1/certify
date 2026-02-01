@@ -28,6 +28,10 @@
     --success-foreground: 0 0% 100%;
     --success-glow: 142 76% 85%;
 
+    /* Warning/Pending Amber */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
     /* Secondary Colors */
     --secondary: 240 9% 98%;
     --secondary-foreground: 240 5.9% 10%;

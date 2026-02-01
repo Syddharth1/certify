@@ -49,6 +49,10 @@ export default {
 					foreground: 'hsl(var(--success-foreground))',
 					glow: 'hsl(var(--success-glow))'
 				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))'
+				},
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
 					foreground: 'hsl(var(--destructive-foreground))'
