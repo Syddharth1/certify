@@ -98,11 +98,14 @@ function validateInput(input: unknown): { valid: boolean; error?: string; data?:
 
 // ============= OpenTimestamps Logic =============
 
-// OpenTimestamps calendar servers
+// OpenTimestamps calendar servers (must include both pool and btc calendars)
 const OTS_CALENDARS = [
   "https://a.pool.opentimestamps.org",
-  "https://b.pool.opentimestamps.org",
-  "https://a.pool.eternitywall.com"
+  "https://b.pool.opentimestamps.org", 
+  "https://a.pool.eternitywall.com",
+  "https://alice.btc.calendar.opentimestamps.org",
+  "https://bob.btc.calendar.opentimestamps.org",
+  "https://finney.calendar.eternitywall.com"
 ];
 
 // Create SHA-256 hash of data
@@ -147,6 +150,30 @@ async function submitToCalendar(hash: string): Promise<{ success: boolean; proof
   return { success: false, error: 'Failed to submit to any calendar server' };
 }
 
+// Extract calendar URL from proof if embedded
+function extractCalendarFromProof(proof: string): string | null {
+  try {
+    const decoded = atob(proof);
+    // Look for calendar URLs in the proof data
+    const calendarPatterns = [
+      'alice.btc.calendar.opentimestamps.org',
+      'bob.btc.calendar.opentimestamps.org',
+      'a.pool.opentimestamps.org',
+      'b.pool.opentimestamps.org',
+      'a.pool.eternitywall.com',
+      'finney.calendar.eternitywall.com'
+    ];
+    for (const pattern of calendarPatterns) {
+      if (decoded.includes(pattern)) {
+        return `https://${pattern}`;
+      }
+    }
+  } catch {
+    // Ignore decode errors
+  }
+  return null;
+}
+
 // Check if timestamp is confirmed on blockchain
 // NOTE: OpenTimestamps anchors to Bitcoin blocks; it does not directly expose a Bitcoin txid
 // without fully parsing the upgraded proof. We treat a longer proof returned by calendar servers
@@ -159,18 +186,32 @@ async function checkTimestampStatus(
     // Decode the stored proof
     const proofBytes = Uint8Array.from(atob(proof), c => c.charCodeAt(0));
     
+    // Try to extract the specific calendar used from the proof
+    const specificCalendar = extractCalendarFromProof(proof);
+    const calendarsToCheck = specificCalendar 
+      ? [specificCalendar, ...OTS_CALENDARS.filter(c => c !== specificCalendar)]
+      : OTS_CALENDARS;
+    
+    console.log(`Checking calendars for upgrade, proof size: ${proofBytes.length}`);
+    
     // Check with calendar server for upgrade
-    for (const calendar of OTS_CALENDARS) {
+    for (const calendar of calendarsToCheck) {
       try {
+        console.log(`Checking calendar: ${calendar}/timestamp/${hash}`);
         const response = await fetch(`${calendar}/timestamp/${hash}`, {
           method: 'GET',
         });
         
+        console.log(`Calendar ${calendar} responded with status: ${response.status}`);
+        
         if (response.ok) {
           const upgradeBytes = new Uint8Array(await response.arrayBuffer());
+          console.log(`Got response from ${calendar}, size: ${upgradeBytes.length} (original: ${proofBytes.length})`);
+          
           if (upgradeBytes.length > proofBytes.length) {
             // Proof has been upgraded (anchored to blockchain)
             const upgradedProof = btoa(String.fromCharCode(...upgradeBytes));
+            console.log(`Proof upgraded! New size: ${upgradeBytes.length}`);
             return {
               confirmed: true,
               timestamp: new Date().toISOString(),
@@ -182,6 +223,8 @@ async function checkTimestampStatus(
         console.log(`Error checking ${calendar}:`, error);
       }
     }
+    
+    console.log('No upgrade found from any calendar');
   } catch (error) {
     console.error('Error checking timestamp status:', error);
   }
