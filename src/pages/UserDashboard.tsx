@@ -65,16 +65,37 @@ const UserDashboard = () => {
         imageData = `data:image/png;base64,${imageData}`;
       }
       
+      // Validate that imageData is a proper data URI to prevent injection
+      if (!imageData.match(/^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$/)) {
+        toast.error("Invalid certificate image format");
+        return;
+      }
+      
       const newWindow = window.open('', '_blank');
       if (newWindow) {
-        newWindow.document.write(`
-          <html>
-            <head><title>${cert.title}</title></head>
-            <body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5;">
-              <img src="${imageData}" style="max-width:100%;max-height:100%;object-fit:contain;" alt="${cert.title}" />
-            </body>
-          </html>
-        `);
+        // Use DOM APIs instead of document.write to prevent XSS
+        const doc = newWindow.document;
+        doc.open();
+        
+        const html = doc.createElement('html');
+        const head = doc.createElement('head');
+        const title = doc.createElement('title');
+        title.textContent = cert.title; // textContent auto-escapes HTML
+        
+        const body = doc.createElement('body');
+        body.style.cssText = 'margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5;';
+        
+        const img = doc.createElement('img');
+        img.src = imageData;
+        img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+        img.alt = cert.title;
+        
+        head.appendChild(title);
+        body.appendChild(img);
+        html.appendChild(head);
+        html.appendChild(body);
+        doc.appendChild(html);
+        doc.close();
       }
     }
   };

@@ -195,6 +195,29 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Unauthorized");
     }
 
+    // ============= Rate Limiting =============
+    // Check rate limit - 50 certificates per day per user
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count: dailySendCount, error: countError } = await supabase
+      .from('certificates')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', oneDayAgo);
+
+    if (countError) {
+      console.error('Rate limit check failed:', countError);
+      // Continue but log the error - don't block on rate limit check failure
+    } else if (dailySendCount !== null && dailySendCount >= 50) {
+      console.log(`Rate limit exceeded for user ${user.id}: ${dailySendCount} certificates in last 24h`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Daily certificate limit exceeded. You can send up to 50 certificates per day.' 
+        }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // Parse and validate input
     const rawInput = await req.json();
     const validation = validateInput(rawInput);
