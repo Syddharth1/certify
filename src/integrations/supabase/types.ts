@@ -37,11 +37,6 @@ export type Database = {
       }
       certificates: {
         Row: {
-          blockchain_hash: string | null
-          blockchain_proof: string | null
-          blockchain_status: string | null
-          blockchain_timestamp: string | null
-          blockchain_tx_id: string | null
           certificate_data: Json
           certificate_url: string | null
           created_at: string | null
@@ -56,11 +51,6 @@ export type Database = {
           verification_id: string
         }
         Insert: {
-          blockchain_hash?: string | null
-          blockchain_proof?: string | null
-          blockchain_status?: string | null
-          blockchain_timestamp?: string | null
-          blockchain_tx_id?: string | null
           certificate_data: Json
           certificate_url?: string | null
           created_at?: string | null
@@ -75,11 +65,6 @@ export type Database = {
           verification_id: string
         }
         Update: {
-          blockchain_hash?: string | null
-          blockchain_proof?: string | null
-          blockchain_status?: string | null
-          blockchain_timestamp?: string | null
-          blockchain_tx_id?: string | null
           certificate_data?: Json
           certificate_url?: string | null
           created_at?: string | null
@@ -248,10 +233,6 @@ export type Database = {
       verify_certificate_by_id: {
         Args: { verification_code: string }
         Returns: {
-          blockchain_hash: string
-          blockchain_status: string
-          blockchain_timestamp: string
-          blockchain_tx_id: string
           certificate_data: Json
           issued_date: string
           recipient_name: string
