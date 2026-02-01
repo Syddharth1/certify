@@ -245,6 +245,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      verify_certificate_by_id: {
+        Args: { verification_code: string }
+        Returns: {
+          blockchain_hash: string
+          blockchain_status: string
+          blockchain_timestamp: string
+          blockchain_tx_id: string
+          certificate_data: Json
+          issued_date: string
+          recipient_name: string
+          title: string
+          verification_id: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"

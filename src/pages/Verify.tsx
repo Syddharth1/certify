@@ -27,17 +27,17 @@ const Verify = () => {
         setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
       });
 
+      // Use secure RPC function for verification - only returns necessary fields
       const verifyPromise = supabase
-        .from("certificates")
-        .select("*")
-        .eq("verification_id", verificationCode.trim())
-        .maybeSingle();
+        .rpc("verify_certificate_by_id", { verification_code: verificationCode.trim() });
 
-      const { data: certificate, error } = await Promise.race([verifyPromise, timeoutPromise]) as any;
+      const { data: certificates, error } = await Promise.race([verifyPromise, timeoutPromise]) as any;
 
       if (error) {
         throw error;
       }
+
+      const certificate = certificates && certificates.length > 0 ? certificates[0] : null;
 
       if (!certificate) {
         setVerificationResult({
@@ -53,10 +53,14 @@ const Verify = () => {
             title: certificate.title,
             recipientName: certificate.recipient_name,
             issuedBy: "Certificate System",
-            issueDate: new Date(certificate.issued_date).toLocaleDateString(),
+            issueDate: certificate.issued_date ? new Date(certificate.issued_date).toLocaleDateString() : "Unknown",
             verificationDate: new Date().toLocaleString(),
             credentialId: certificate.verification_id,
-            certificateUrl: `/certificate/${certificate.verification_id}`
+            certificateUrl: `/certificate/${certificate.verification_id}`,
+            blockchainStatus: certificate.blockchain_status,
+            blockchainHash: certificate.blockchain_hash,
+            blockchainTimestamp: certificate.blockchain_timestamp,
+            blockchainTxId: certificate.blockchain_tx_id
           },
           error: null
         });
