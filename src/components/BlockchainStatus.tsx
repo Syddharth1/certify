@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link2, Clock, CheckCircle2, ExternalLink, Loader2, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,30 +30,44 @@ export const BlockchainStatus = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchBlockchainStatus = async () => {
-      if (!verificationId) {
-        setLoading(false);
-        return;
-      }
+  const fetchBlockchainStatus = useCallback(async () => {
+    if (!verificationId) {
+      setLoading(false);
+      return;
+    }
 
-      try {
-        const { data, error } = await supabase.functions.invoke('timestamp-certificate', {
-          body: { action: 'verify', verificationId }
-        });
+    try {
+      setError(null);
+      const { data, error } = await supabase.functions.invoke('timestamp-certificate', {
+        body: { action: 'verify', verificationId }
+      });
 
-        if (error) throw error;
-        setBlockchainData(data);
-      } catch (err: any) {
-        console.error("Error fetching blockchain status:", err);
-        setError("Failed to fetch blockchain status");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBlockchainStatus();
+      if (error) throw error;
+      setBlockchainData(data);
+    } catch (err: any) {
+      console.error("Error fetching blockchain status:", err);
+      setError("Failed to fetch blockchain status");
+    } finally {
+      setLoading(false);
+    }
   }, [verificationId]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchBlockchainStatus();
+  }, [fetchBlockchainStatus]);
+
+  // If pending, periodically re-check (OpenTimestamps upgrades can take time)
+  useEffect(() => {
+    if (!blockchainData?.hasBlockchainProof) return;
+    if (blockchainData.status !== 'pending') return;
+
+    const interval = setInterval(() => {
+      fetchBlockchainStatus();
+    }, 2 * 60 * 1000); // 2 minutes
+
+    return () => clearInterval(interval);
+  }, [blockchainData?.hasBlockchainProof, blockchainData?.status, fetchBlockchainStatus]);
 
   // Badge variant - compact status indicator
   if (variant === "badge") {
@@ -222,13 +236,28 @@ export const BlockchainStatus = ({
               
               {blockchainData.txId && (
                 <div>
-                  <span className="text-muted-foreground">Transaction ID: </span>
+                  <span className="text-muted-foreground">Bitcoin TxID: </span>
                   <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
                     {blockchainData.txId}
                   </code>
                 </div>
               )}
             </div>
+
+            {!isConfirmed && (
+              <div className="mt-4 flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchBlockchainStatus}
+                >
+                  Refresh status
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  OpenTimestamps batching can take longer than 1–2 hours depending on network conditions.
+                </p>
+              </div>
+            )}
 
             {isConfirmed && blockchainData.explorerUrl && (
               <Button
