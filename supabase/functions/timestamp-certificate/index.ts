@@ -148,7 +148,13 @@ async function submitToCalendar(hash: string): Promise<{ success: boolean; proof
 }
 
 // Check if timestamp is confirmed on blockchain
-async function checkTimestampStatus(hash: string, proof: string): Promise<{ confirmed: boolean; timestamp?: string; txId?: string }> {
+// NOTE: OpenTimestamps anchors to Bitcoin blocks; it does not directly expose a Bitcoin txid
+// without fully parsing the upgraded proof. We treat a longer proof returned by calendar servers
+// as confirmation that the attestation has been upgraded with Bitcoin block data.
+async function checkTimestampStatus(
+  hash: string,
+  proof: string
+): Promise<{ confirmed: boolean; timestamp?: string; upgradedProof?: string }> {
   try {
     // Decode the stored proof
     const proofBytes = Uint8Array.from(atob(proof), c => c.charCodeAt(0));
@@ -165,10 +171,10 @@ async function checkTimestampStatus(hash: string, proof: string): Promise<{ conf
           if (upgradeBytes.length > proofBytes.length) {
             // Proof has been upgraded (anchored to blockchain)
             const upgradedProof = btoa(String.fromCharCode(...upgradeBytes));
-            return { 
-              confirmed: true, 
+            return {
+              confirmed: true,
               timestamp: new Date().toISOString(),
-              txId: hash.substring(0, 16) // Simplified - would need full OTS parsing for real txId
+              upgradedProof,
             };
           }
         }
@@ -310,26 +316,29 @@ const handler = async (req: Request): Promise<Response> => {
       // Check if pending proof is now confirmed
       if (cert.blockchain_status === 'pending') {
         const status = await checkTimestampStatus(cert.blockchain_hash, cert.blockchain_proof);
-        
+
         if (status.confirmed) {
-          // Update to confirmed
+          // Update to confirmed and persist upgraded proof
           await supabase
             .from('certificates')
             .update({
               blockchain_status: 'confirmed',
               blockchain_timestamp: status.timestamp,
-              blockchain_tx_id: status.txId
+              blockchain_tx_id: null,
+              blockchain_proof: status.upgradedProof ?? cert.blockchain_proof,
             })
             .eq('verification_id', verificationId);
-          
+
           return new Response(
-            JSON.stringify({ 
+            JSON.stringify({
               hasBlockchainProof: true,
               status: 'confirmed',
               hash: cert.blockchain_hash,
               timestamp: status.timestamp,
-              txId: status.txId,
-              explorerUrl: `https://opentimestamps.org`
+              txId: null,
+              message:
+                'Anchored to Bitcoin. OpenTimestamps attests via a Bitcoin block; a txid is not provided by this service without proof parsing.',
+              explorerUrl: `https://opentimestamps.org`,
             }),
             { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
           );
