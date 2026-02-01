@@ -249,30 +249,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Certificate saved successfully:", certificate.id);
 
-    // Trigger blockchain timestamping (fire and forget)
-    try {
-      const timestampResponse = await fetch(`${supabaseUrl}/functions/v1/timestamp-certificate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseServiceKey}`,
-        },
-        body: JSON.stringify({
-          action: 'create',
-          certificateId: certificate.id,
-        }),
-      });
-      
-      if (timestampResponse.ok) {
-        console.log("Blockchain timestamp initiated for certificate:", certificate.id);
-      } else {
-        console.error("Failed to initiate blockchain timestamp");
-      }
-    } catch (timestampError) {
-      console.error("Error initiating blockchain timestamp:", timestampError);
-      // Don't fail the certificate creation if timestamping fails
-    }
-
     // Generate QR code for verification
     const verificationUrl = `https://certify-cert.vercel.app/certificate/${verificationId}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(verificationUrl)}`;
