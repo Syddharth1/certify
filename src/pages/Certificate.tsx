@@ -9,20 +9,18 @@ import { toast } from "sonner";
 import jsPDF from "jspdf";
 import Navigation from "@/components/Navigation";
 
-interface Certificate {
-  id: string;
+// Certificate data returned by the secure RPC function (limited fields)
+interface CertificateData {
+  verification_id: string;
   title: string;
   recipient_name: string;
-  recipient_email: string;
-  verification_id: string;
-  certificate_data: any;
   issued_date: string;
-  created_at: string;
+  certificate_data: any;
 }
 
 const Certificate = () => {
   const { verificationId } = useParams<{ verificationId: string }>();
-  const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const [certificate, setCertificate] = useState<CertificateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,20 +33,19 @@ const Certificate = () => {
       }
 
       try {
-        const { data, error } = await supabase
-          .from("certificates")
-          .select("*")
-          .eq("verification_id", verificationId)
-          .maybeSingle();
+        // Use the secure RPC function instead of direct table access
+        // This ensures only non-sensitive fields are returned
+        const { data: certificates, error: rpcError } = await supabase
+          .rpc("verify_certificate_by_id", { verification_code: verificationId });
 
-        if (error) {
-          throw error;
+        if (rpcError) {
+          throw rpcError;
         }
 
-        if (!data) {
+        if (!certificates || certificates.length === 0) {
           setError("Certificate not found");
         } else {
-          setCertificate(data);
+          setCertificate(certificates[0]);
         }
       } catch (err: any) {
         console.error("Error fetching certificate:", err);
@@ -212,7 +209,7 @@ const Certificate = () => {
               <h3 className="text-lg font-semibold mb-2">Certificate Verified</h3>
               <p className="text-muted-foreground text-sm">
                 This certificate has been verified as authentic and was issued on{" "}
-                {new Date(certificate.created_at).toLocaleDateString()}
+                {new Date(certificate.issued_date).toLocaleDateString()}
               </p>
             </CardContent>
           </Card>
