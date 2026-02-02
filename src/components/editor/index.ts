@@ -1,7 +1,10 @@
 export { EditorToolbar } from './EditorToolbar';
+export { EditorToolbarStreamlined } from './EditorToolbarStreamlined';
 export { PositionControls } from './PositionControls';
 export { LayersPanel } from './LayersPanel';
 export { TextControls } from './TextControls';
 export { ShapeControls } from './ShapeControls';
 export { EditorContextMenu } from './EditorContextMenu';
 export { TemplateQuickSwitch } from './TemplateQuickSwitch';
+export { EditorSidebarNav } from './EditorSidebarNav';
+export type { EditorPanel } from './EditorSidebarNav';
