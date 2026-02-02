@@ -129,7 +129,7 @@ const Verify = () => {
               Certificate Verification
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Instantly verify the authenticity of any certificate using our secure blockchain-powered verification system
+              Instantly verify the authenticity of any certificate using our secure verification system
             </p>
           </div>
 
