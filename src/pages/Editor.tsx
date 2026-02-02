@@ -1,24 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation } from "react-router-dom";
-import { Canvas as FabricCanvas, Circle, Rect, IText, util, Image as FabricImage, Triangle, Line, Polygon, loadSVGFromString, Group, ActiveSelection, Shadow } from "fabric";
-import { 
-  Type, 
-  Square, 
-  Circle as CircleIcon, 
-  Upload,
-  QrCode,
-  Triangle as TriangleIcon,
-  Minus,
-  Pentagon,
-  Star,
-  Hexagon,
-  Hash,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Canvas as FabricCanvas, Circle, Rect, IText, util, Image as FabricImage, Triangle, Line, Polygon, Group, Shadow, Gradient } from "fabric";
 import { toast } from "sonner";
 import QRCodeGenerator from "qrcode";
 import { ElementManager } from "@/components/ElementManager";
@@ -27,22 +9,27 @@ import { ProductTour } from "@/components/ProductTour";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { SkipToContent } from "@/components/SkipToContent";
 import { 
-  EditorToolbar, 
-  PositionControls, 
-  LayersPanel, 
-  TextControls, 
-  ShapeControls,
+  EditorToolbarStreamlined, 
   EditorContextMenu,
-  TemplateQuickSwitch,
+  EditorSidebarNav,
+  EditorPanel,
 } from "@/components/editor";
+import { 
+  ToolsPanel, 
+  ShapesPanel, 
+  CanvasPanel, 
+  PropertiesPanel,
+  LayersPanelEnhanced,
+} from "@/components/editor/panels";
 import { useSnapGuides } from "@/hooks/useSnapGuides";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Editor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const location = useLocation();
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [activeColor, setActiveColor] = useState("#3b82f6");
-  const [activeTool, setActiveTool] = useState<"select" | "text" | "rectangle" | "circle" | "triangle" | "line" | "star" | "pentagon" | "hexagon" | "image">("select");
+  const [activeTool, setActiveTool] = useState<string>("select");
   const [selectedObject, setSelectedObject] = useState<any>(null);
   const [canvasHistory, setCanvasHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -53,22 +40,18 @@ const Editor = () => {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [canvasBackground, setCanvasBackground] = useState("#ffffff");
   const [clipboard, setClipboard] = useState<any>(null);
+  const [activePanel, setActivePanel] = useState<EditorPanel>("tools");
   const [, forceUpdate] = useState({});
 
-  // Initialize snap guides
   useSnapGuides(fabricCanvas);
 
   const handleAISuggestion = (text: string, type: 'title' | 'message') => {
-    if (type === 'title') {
-      setCertificateTitle(text);
-    } else if (type === 'message') {
-      setMessage(text);
-    }
+    if (type === 'title') setCertificateTitle(text);
+    else if (type === 'message') setMessage(text);
   };
 
   const saveToHistory = useCallback(() => {
     if (!fabricCanvas) return;
-    
     const canvasJson = JSON.stringify(fabricCanvas.toJSON());
     setCanvasHistory(prev => {
       const newHistory = prev.slice(0, historyIndex + 1);
@@ -81,7 +64,6 @@ const Editor = () => {
 
   useEffect(() => {
     if (!canvasRef.current) return;
-
     const canvas = new FabricCanvas(canvasRef.current, {
       width: 800,
       height: 600,
@@ -109,7 +91,6 @@ const Editor = () => {
     return () => { canvas.dispose(); };
   }, [location.state]);
 
-  // Save history on object changes
   useEffect(() => {
     if (!fabricCanvas) return;
     const save = () => saveToHistory();
@@ -123,7 +104,6 @@ const Editor = () => {
     };
   }, [fabricCanvas, saveToHistory]);
 
-  // Auto-save
   useEffect(() => {
     if (!fabricCanvas) return;
     const interval = setInterval(() => {
@@ -139,7 +119,6 @@ const Editor = () => {
     return () => clearInterval(interval);
   }, [fabricCanvas]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -182,7 +161,7 @@ const Editor = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [fabricCanvas, selectedObject, historyIndex, canvasHistory, clipboard]);
 
-  const handleToolClick = (tool: typeof activeTool) => {
+  const handleToolClick = (tool: string) => {
     setActiveTool(tool);
     if (!fabricCanvas) return;
 
@@ -451,9 +430,7 @@ const Editor = () => {
     if (!fabricCanvas || !selectedObject || selectedObject.type !== 'group') return;
     const items = selectedObject.getObjects();
     fabricCanvas.remove(selectedObject);
-    items.forEach((item: any) => {
-      fabricCanvas.add(item);
-    });
+    items.forEach((item: any) => fabricCanvas.add(item));
     fabricCanvas.renderAll();
     toast("Objects ungrouped");
   };
@@ -497,8 +474,17 @@ const Editor = () => {
 
   const updateObjectProperty = (property: string, value: any) => {
     if (!selectedObject || !fabricCanvas) return;
+    
     if (property === 'shadow' && value) {
       selectedObject.set('shadow', new Shadow(value));
+    } else if (property === 'fill' && typeof value === 'object' && value.type) {
+      // Handle gradient fills
+      const gradient = new Gradient({
+        type: value.type,
+        coords: value.coords,
+        colorStops: value.colorStops,
+      });
+      selectedObject.set('fill', gradient);
     } else {
       selectedObject.set(property, value);
     }
@@ -578,7 +564,7 @@ const Editor = () => {
     if (!fabricCanvas) return;
     fabricCanvas.setDimensions({ width, height });
     fabricCanvas.renderAll();
-    toast.success(`Canvas: ${width}x${height}`);
+    toast.success(`Canvas: ${width}×${height}`);
   };
 
   const handleCanvasBackgroundChange = (color: string) => {
@@ -588,190 +574,104 @@ const Editor = () => {
     fabricCanvas.renderAll();
   };
 
+  const renderPanel = () => {
+    switch (activePanel) {
+      case "tools":
+        return (
+          <ToolsPanel
+            activeTool={activeTool}
+            activeColor={activeColor}
+            onToolClick={handleToolClick}
+            onColorChange={setActiveColor}
+            onAddQRCode={handleAddQRCode}
+            onAddCertificateId={handleAddCertificateId}
+            onImageUpload={handleImageUpload}
+          />
+        );
+      case "shapes":
+        return (
+          <ShapesPanel
+            activeTool={activeTool}
+            onToolClick={handleToolClick}
+          />
+        );
+      case "design":
+        return <ElementManager onAddElement={handleAddElement} />;
+      case "properties":
+        return (
+          <PropertiesPanel
+            selectedObject={selectedObject}
+            onUpdateProperty={updateObjectProperty}
+            onToggleStyle={toggleTextStyle}
+          />
+        );
+      case "canvas":
+        return (
+          <CanvasPanel
+            canvasZoom={canvasZoom}
+            canvasBackground={canvasBackground}
+            onZoom={handleZoom}
+            onCanvasSizeChange={changeCanvasSize}
+            onBackgroundChange={handleCanvasBackgroundChange}
+          />
+        );
+      case "layers":
+        return (
+          <LayersPanelEnhanced
+            fabricCanvas={fabricCanvas}
+            selectedObject={selectedObject}
+            onSelectObject={handleSelectObject}
+            onToggleVisibility={handleToggleVisibility}
+            onToggleLock={handleToggleObjectLock}
+            onDeleteObject={handleDeleteObject}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <>
       <SkipToContent />
       <ProductTour tourKey="editor" />
       <KeyboardShortcuts />
-      <div className="min-h-screen bg-gradient-subtle">
+      
+      <div className="min-h-screen bg-muted/30">
         <div className="flex h-screen">
+          {/* Icon Rail Navigation */}
           {!isPreviewMode && (
-            <div className="w-80 bg-card border-r border-border overflow-y-auto">
-              <div className="p-6">
+            <EditorSidebarNav
+              activePanel={activePanel}
+              onPanelChange={setActivePanel}
+              hasSelection={!!selectedObject}
+            />
+          )}
+
+          {/* Context Panel */}
+          {!isPreviewMode && (
+            <div className="w-80 bg-card border-r border-border flex flex-col">
+              <div className="p-4 border-b border-border">
                 <Breadcrumb />
-                <h2 className="text-xl font-display font-bold mb-4">Certificate Editor</h2>
-                
-                <Tabs defaultValue="tools" className="space-y-4">
-                  <TabsList className="grid w-full grid-cols-5 text-xs">
-                    <TabsTrigger value="tools">Tools</TabsTrigger>
-                    <TabsTrigger value="shapes">Shapes</TabsTrigger>
-                    <TabsTrigger value="props">Props</TabsTrigger>
-                    <TabsTrigger value="design">Design</TabsTrigger>
-                    <TabsTrigger value="canvas">Canvas</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="tools" className="space-y-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Basic Tools</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button variant={activeTool === "text" ? "default" : "outline"} size="sm" onClick={() => handleToolClick("text")} className="flex items-center gap-2">
-                            <Type className="h-4 w-4" /> Text
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={handleAddQRCode} className="flex items-center gap-2">
-                            <QrCode className="h-4 w-4" /> QR Code
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={handleAddCertificateId} className="flex items-center gap-2 col-span-2">
-                            <Hash className="h-4 w-4" /> Certificate ID
-                          </Button>
-                        </div>
-                        <div>
-                          <Label htmlFor="image-upload" className="cursor-pointer">
-                            <Button variant="outline" size="sm" className="w-full" asChild>
-                              <span><Upload className="h-4 w-4 mr-2" /> Upload Image</span>
-                            </Button>
-                          </Label>
-                          <Input id="image-upload" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Active Color</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center gap-2">
-                          <Input type="color" value={activeColor} onChange={(e) => setActiveColor(e.target.value)} className="w-12 h-10 p-1" />
-                          <Input type="text" value={activeColor} onChange={(e) => setActiveColor(e.target.value)} className="flex-1" />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <LayersPanel
-                      fabricCanvas={fabricCanvas}
-                      selectedObject={selectedObject}
-                      onSelectObject={handleSelectObject}
-                      onToggleVisibility={handleToggleVisibility}
-                      onToggleLock={handleToggleObjectLock}
-                      onDeleteObject={handleDeleteObject}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="shapes" className="space-y-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Basic Shapes</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            { tool: "rectangle", Icon: Square, label: "Rectangle" },
-                            { tool: "circle", Icon: CircleIcon, label: "Circle" },
-                            { tool: "triangle", Icon: TriangleIcon, label: "Triangle" },
-                            { tool: "line", Icon: Minus, label: "Line" },
-                            { tool: "pentagon", Icon: Pentagon, label: "Pentagon" },
-                            { tool: "hexagon", Icon: Hexagon, label: "Hexagon" },
-                          ].map(({ tool, Icon, label }) => (
-                            <Button key={tool} variant={activeTool === tool ? "default" : "outline"} size="sm" onClick={() => handleToolClick(tool as any)} className="flex items-center gap-2">
-                              <Icon className="h-4 w-4" /> {label}
-                            </Button>
-                          ))}
-                          <Button variant={activeTool === "star" ? "default" : "outline"} size="sm" onClick={() => handleToolClick("star")} className="flex items-center gap-2 col-span-2">
-                            <Star className="h-4 w-4" /> Star
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  <TabsContent value="props" className="space-y-4">
-                    {selectedObject && <PositionControls selectedObject={selectedObject} onUpdateProperty={updateObjectProperty} />}
-                    <TextControls selectedObject={selectedObject} onUpdateProperty={updateObjectProperty} onToggleStyle={toggleTextStyle} />
-                    <ShapeControls selectedObject={selectedObject} onUpdateProperty={updateObjectProperty} />
-                    {!selectedObject && (
-                      <Card>
-                        <CardContent className="py-8 text-center text-muted-foreground text-sm">
-                          Select an object to edit its properties
-                        </CardContent>
-                      </Card>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="design" className="space-y-4">
-                    <ElementManager onAddElement={handleAddElement} />
-                  </TabsContent>
-
-                  <TabsContent value="canvas" className="space-y-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Canvas Size</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            { label: "A4", sub: "Portrait", w: 2480, h: 3508 },
-                            { label: "Letter", sub: "8.5x11", w: 2550, h: 3300 },
-                            { label: "Instagram", sub: "Square", w: 1080, h: 1080 },
-                            { label: "Facebook", sub: "Cover", w: 1200, h: 630 },
-                          ].map(({ label, sub, w, h }) => (
-                            <Button key={label} variant="outline" size="sm" onClick={() => changeCanvasSize(w, h)}>
-                              {label} <span className="text-xs text-muted-foreground ml-1">({sub})</span>
-                            </Button>
-                          ))}
-                          <Button variant="outline" size="sm" onClick={() => changeCanvasSize(800, 600)} className="col-span-2">
-                            Default (800x600)
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Background</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Input type="color" value={canvasBackground} onChange={(e) => handleCanvasBackgroundChange(e.target.value)} className="w-12 h-10 p-1" />
-                          <Input type="text" value={canvasBackground} onChange={(e) => handleCanvasBackgroundChange(e.target.value)} className="flex-1" />
-                        </div>
-                        <div className="grid grid-cols-4 gap-2">
-                          {["#ffffff", "#f8f9fa", "#fff9e6", "#e8f4f8"].map((color) => (
-                            <Button key={color} variant="outline" size="sm" onClick={() => handleCanvasBackgroundChange(color)} className="h-8 w-full border-2" style={{ backgroundColor: color }} />
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Zoom ({Math.round(canvasZoom * 100)}%)</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleZoom('out')}>-</Button>
-                          <div className="flex-1 text-center text-sm">{Math.round(canvasZoom * 100)}%</div>
-                          <Button variant="outline" size="sm" onClick={() => handleZoom('in')}>+</Button>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => handleZoom('reset')} className="w-full">Reset Zoom</Button>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                </Tabs>
               </div>
+              <ScrollArea className="flex-1">
+                <div className="p-4">
+                  {renderPanel()}
+                </div>
+              </ScrollArea>
             </div>
           )}
 
+          {/* Main Editor Area */}
           <div className="flex-1 flex flex-col">
-            <EditorToolbar
+            <EditorToolbarStreamlined
               fabricCanvas={fabricCanvas}
               selectedObject={selectedObject}
               historyIndex={historyIndex}
               canvasHistoryLength={canvasHistory.length}
               isPreviewMode={isPreviewMode}
               canvasRef={canvasRef}
+              clipboard={clipboard}
               onUndo={handleUndo}
               onRedo={handleRedo}
               onToggleLock={toggleLock}
@@ -798,6 +698,7 @@ const Editor = () => {
               generateCertificateId={generateCertificateId}
             />
 
+            {/* Canvas Area */}
             <div className="flex-1 p-8 overflow-auto bg-muted/20">
               <div className="flex items-center justify-center min-h-full">
                 <EditorContextMenu
