@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import QRScanner from "@/components/QRScanner";
 import Navigation from "@/components/Navigation";
-
+import { secureLogger, verificationCodeSchema, getSafeErrorMessage, sanitizeInput } from "@/lib/security";
 const Verify = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationResult, setVerificationResult] = useState<any>(null);
@@ -15,20 +15,35 @@ const Verify = () => {
   const [showQRScanner, setShowQRScanner] = useState(false);
 
   const handleVerify = async () => {
-    if (!verificationCode.trim()) return;
+    const trimmedCode = verificationCode.trim();
+    if (!trimmedCode) return;
+    
+    // Validate input format before making request
+    const validationResult = verificationCodeSchema.safeParse(trimmedCode);
+    if (!validationResult.success) {
+      setVerificationResult({
+        isValid: false,
+        certificate: null,
+        error: "Invalid verification code format. Please check and try again."
+      });
+      return;
+    }
+    
+    // Sanitize input
+    const sanitizedCode = sanitizeInput(trimmedCode);
     
     setIsVerifying(true);
-    setVerificationResult(null); // Clear previous results
+    setVerificationResult(null);
     
     try {
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
+        setTimeout(() => reject(new Error('Request timeout')), 10000);
       });
 
       // Use secure RPC function for verification - only returns necessary fields
       const verifyPromise = supabase
-        .rpc("verify_certificate_by_id", { verification_code: verificationCode.trim() });
+        .rpc("verify_certificate_by_id", { verification_code: sanitizedCode });
 
       const { data: certificates, error } = await Promise.race([verifyPromise, timeoutPromise]) as any;
 
@@ -60,11 +75,9 @@ const Verify = () => {
           error: null
         });
       }
-    } catch (error: any) {
-      console.error("Verification error:", error);
-      const errorMessage = error.message === 'Request timeout' 
-        ? "Request timed out. Please check your connection and try again."
-        : "Failed to verify certificate. Please try again.";
+    } catch (error: unknown) {
+      secureLogger.error("Verification error:", error);
+      const errorMessage = getSafeErrorMessage(error);
       
       setVerificationResult({
         isValid: false,
@@ -81,15 +94,18 @@ const Verify = () => {
   };
 
   const handleQRScanResult = (result: string) => {
-    console.log("QR scan result:", result);
+    secureLogger.log("QR scan result received");
     
     // Extract verification ID from URL if it's a full URL
     let verificationId = result;
     if (result.includes('/certificate/')) {
       const parts = result.split('/certificate/');
       if (parts.length > 1) {
-        verificationId = parts[1];
+        // Sanitize the extracted ID
+        verificationId = sanitizeInput(parts[1]);
       }
+    } else {
+      verificationId = sanitizeInput(result);
     }
     
     setVerificationCode(verificationId);

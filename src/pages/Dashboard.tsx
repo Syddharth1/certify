@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, FileText, Award, Users, BarChart3, Upload, Trash2, Edit } from "lucide-react";
+import { Plus, FileText, Award, Users, BarChart3, Upload, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { DashboardStatSkeleton, ListItemSkeleton } from "@/components/LoadingSkeleton";
 import { ProductTour } from "@/components/ProductTour";
 import { SkipToContent } from "@/components/SkipToContent";
+import { secureLogger, getSafeErrorMessage, displayNameSchema, fileUploadSchema } from "@/lib/security";
 
 const Dashboard = () => {
   const { isAdmin } = useAuth();
@@ -43,29 +44,29 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      console.log("Fetching dashboard stats...");
+      secureLogger.log("Fetching dashboard stats...");
       
       // Call edge function to get all dashboard data in one request
       const { data, error } = await supabase.functions.invoke('get-dashboard-stats');
 
-      console.log("Dashboard function response:", { data, error });
+      secureLogger.log("Dashboard function response received");
 
       if (error) {
-        console.error("Dashboard function error:", error);
+        secureLogger.error("Dashboard function error:", error);
         throw error;
       }
 
       if (data?.success) {
-        console.log("Dashboard data loaded successfully");
+        secureLogger.log("Dashboard data loaded successfully");
         setStats(data.stats);
         setRecentCertificates(data.recentCertificates);
       } else {
-        console.error("Dashboard function returned error:", data?.error);
+        secureLogger.error("Dashboard function returned error");
         throw new Error(data?.error || 'Failed to fetch dashboard data');
       }
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      toast.error(`Failed to load dashboard data: ${error.message || 'Unknown error'}`);
+      secureLogger.error("Error fetching dashboard data:", error);
+      toast.error(getSafeErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -81,14 +82,32 @@ const Dashboard = () => {
       if (error) throw error;
       setElements(data || []);
     } catch (error) {
-      console.error("Error fetching elements:", error);
+      secureLogger.error("Error fetching elements:", error);
       toast.error("Failed to load elements");
     }
   };
 
   const handleElementUpload = async () => {
-    if (!elementFile || !elementTitle.trim()) {
-      toast.error("Please provide both title and file");
+    // Validate title
+    const titleValidation = displayNameSchema.safeParse(elementTitle);
+    if (!titleValidation.success) {
+      toast.error(titleValidation.error.errors[0]?.message || "Invalid title");
+      return;
+    }
+
+    if (!elementFile) {
+      toast.error("Please select a file to upload");
+      return;
+    }
+
+    // Validate file
+    const fileValidation = fileUploadSchema.safeParse({
+      name: elementFile.name,
+      size: elementFile.size,
+      type: elementFile.type
+    });
+    if (!fileValidation.success) {
+      toast.error(fileValidation.error.errors[0]?.message || "Invalid file");
       return;
     }
 
@@ -113,7 +132,7 @@ const Dashboard = () => {
       const { error: dbError } = await supabase
         .from("elements")
         .insert({
-          title: elementTitle,
+          title: titleValidation.data,
           category: elementCategory,
           image_url: publicUrl,
           created_by: (await supabase.auth.getUser()).data.user?.id
@@ -129,7 +148,7 @@ const Dashboard = () => {
       fetchElements();
       fetchDashboardData();
     } catch (error) {
-      console.error("Error uploading element:", error);
+      secureLogger.error("Error uploading element:", error);
       toast.error("Failed to upload element");
     }
   };
@@ -158,7 +177,7 @@ const Dashboard = () => {
       fetchElements();
       fetchDashboardData();
     } catch (error) {
-      console.error("Error deleting element:", error);
+      secureLogger.error("Error deleting element:", error);
       toast.error("Failed to delete element");
     }
   };
