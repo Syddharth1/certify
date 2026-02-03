@@ -7,6 +7,7 @@ import Navigation from "@/components/Navigation";
 import { useAuth } from "@/hooks/useAuth";
 
 import { SkipToContent } from "@/components/SkipToContent";
+import { Certificate3D } from "@/components/3d/Certificate3D";
 
 // 3D Icons for feature cards
 import iconTemplates from "@/assets/icon-templates.png";
@@ -105,54 +106,61 @@ const Index = () => {
       <Navigation />
       
       {/* Enhanced Hero Section with Color Bends Background */}
-      <section className="color-bends-bg text-white py-32 md:py-40 relative overflow-hidden">
-        <div className="container mx-auto px-6 md:px-8 text-center relative z-10">
-          <div className="max-w-5xl mx-auto">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-6 leading-[1.1] tracking-tight animate-fade-in">
-              Create, Verify & Share<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-gold via-white to-accent-gold animate-pulse">Professional Certificates</span>
-            </h1>
-            
-            {/* Value Proposition */}
-            <p className="text-lg md:text-xl text-white/90 mb-4 max-w-2xl mx-auto leading-relaxed font-medium animate-fade-in">
-              The all-in-one platform for creating tamper-proof digital certificates with instant QR verification.
-            </p>
-            <p className="text-base md:text-lg text-white/70 mb-10 max-w-3xl mx-auto leading-relaxed animate-fade-in">
-              Design stunning certificates in minutes, not hours. Our drag-and-drop editor and professional templates make it effortless to create, distribute, and verify credentials.
-            </p>
+      <section className="color-bends-bg text-white py-24 md:py-32 relative overflow-hidden">
+        <div className="container mx-auto px-6 md:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto">
+            {/* Left side - Text content */}
+            <div className="text-center lg:text-left">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-6 leading-[1.1] tracking-tight animate-fade-in">
+                Create, Verify & Share<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-gold via-white to-accent-gold animate-pulse">Professional Certificates</span>
+              </h1>
+              
+              {/* Value Proposition */}
+              <p className="text-lg md:text-xl text-white/90 mb-4 max-w-xl leading-relaxed font-medium animate-fade-in">
+                The all-in-one platform for creating tamper-proof digital certificates with instant QR verification.
+              </p>
+              <p className="text-base md:text-lg text-white/70 mb-10 max-w-xl leading-relaxed animate-fade-in">
+                Design stunning certificates in minutes, not hours. Our drag-and-drop editor and professional templates make it effortless to create, distribute, and verify credentials.
+              </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in">
-              {user ? (
-                <>
-                  <Link to="/dashboard">
-                    <Button size="lg" className="group bg-white text-primary hover:bg-white/95 px-8 py-6 text-lg rounded-xl font-semibold shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105">
-                      Go to Dashboard
-                      <ChevronDown className="ml-2 h-4 w-4 rotate-[-90deg] group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </Link>
-                  <Link to="/templates">
-                    <Button size="lg" variant="outline" className="border-2 border-white/30 bg-white/5 backdrop-blur-md text-white hover:bg-white/15 hover:border-white/50 px-8 py-6 text-lg rounded-xl font-semibold transition-all duration-300 hover:scale-105">
-                      Browse Templates
-                    </Button>
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link to="/auth">
-                    <Button size="lg" className="group bg-white text-primary hover:bg-white/95 px-8 py-6 text-lg rounded-xl font-semibold shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105">
-                      Start Creating for Free
-                      <ChevronDown className="ml-2 h-4 w-4 rotate-[-90deg] group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </Link>
-                  <Link to="/templates">
-                    <Button size="lg" variant="outline" className="border-2 border-white/30 bg-white/5 backdrop-blur-md text-white hover:bg-white/15 hover:border-white/50 px-8 py-6 text-lg rounded-xl font-semibold transition-all duration-300 hover:scale-105">
-                      View Templates
-                    </Button>
-                  </Link>
-                </>
-              )}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center animate-fade-in">
+                {user ? (
+                  <>
+                    <Link to="/dashboard">
+                      <Button size="lg" className="group bg-white text-primary hover:bg-white/95 px-8 py-6 text-lg rounded-xl font-semibold shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105">
+                        Go to Dashboard
+                        <ChevronDown className="ml-2 h-4 w-4 rotate-[-90deg] group-hover:translate-x-1 transition-transform" />
+                      </Button>
+                    </Link>
+                    <Link to="/templates">
+                      <Button size="lg" variant="outline" className="border-2 border-white/30 bg-white/5 backdrop-blur-md text-white hover:bg-white/15 hover:border-white/50 px-8 py-6 text-lg rounded-xl font-semibold transition-all duration-300 hover:scale-105">
+                        Browse Templates
+                      </Button>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/auth">
+                      <Button size="lg" className="group bg-white text-primary hover:bg-white/95 px-8 py-6 text-lg rounded-xl font-semibold shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105">
+                        Start Creating for Free
+                        <ChevronDown className="ml-2 h-4 w-4 rotate-[-90deg] group-hover:translate-x-1 transition-transform" />
+                      </Button>
+                    </Link>
+                    <Link to="/templates">
+                      <Button size="lg" variant="outline" className="border-2 border-white/30 bg-white/5 backdrop-blur-md text-white hover:bg-white/15 hover:border-white/50 px-8 py-6 text-lg rounded-xl font-semibold transition-all duration-300 hover:scale-105">
+                        View Templates
+                      </Button>
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
-            
+
+            {/* Right side - 3D Certificate */}
+            <div className="hidden lg:block h-[400px] animate-fade-in">
+              <Certificate3D className="w-full h-full" />
+            </div>
           </div>
         </div>
       </section>
