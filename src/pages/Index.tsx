@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 import { SkipToContent } from "@/components/SkipToContent";
 import { Certificate3D } from "@/components/3d/Certificate3D";
+import LiquidEther from "@/components/backgrounds/LiquidEther";
 
 // 3D Icons for feature cards
 import iconTemplates from "@/assets/icon-templates.png";
@@ -105,8 +106,22 @@ const Index = () => {
     <div className="min-h-screen" id="main-content">
       <Navigation />
       
-      {/* Enhanced Hero Section with Color Bends Background */}
-      <section className="color-bends-bg text-white py-24 md:py-32 relative overflow-hidden">
+      {/* Enhanced Hero Section with Liquid Ether Background */}
+      <section className="relative text-white py-24 md:py-32 overflow-hidden min-h-[600px]">
+        {/* Liquid Ether Background */}
+        <div className="absolute inset-0 z-0">
+          <LiquidEther
+            colors={['#1a365d', '#3b82f6', '#60a5fa', '#93c5fd']}
+            mouseForce={25}
+            cursorSize={120}
+            resolution={0.5}
+            autoDemo={true}
+            autoSpeed={0.4}
+            autoIntensity={1.8}
+          />
+          {/* Dark overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-primary/60 to-primary/80" />
+        </div>
         <div className="container mx-auto px-6 md:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto">
             {/* Left side - Text content */}
