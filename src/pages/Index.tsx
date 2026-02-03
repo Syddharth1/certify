@@ -7,8 +7,8 @@ import Navigation from "@/components/Navigation";
 import { useAuth } from "@/hooks/useAuth";
 
 import { SkipToContent } from "@/components/SkipToContent";
-import { Certificate3D } from "@/components/3d/Certificate3D";
 import LiquidEther from "@/components/backgrounds/LiquidEther";
+import certificationIllustration from "@/assets/certification-illustration.svg";
 
 // 3D Icons for feature cards
 import iconTemplates from "@/assets/icon-templates.png";
@@ -170,9 +170,13 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Right side - 3D Certificate */}
-            <div className="hidden lg:block h-[400px] animate-fade-in">
-              <Certificate3D className="w-full h-full" />
+            {/* Right side - Certificate Illustration */}
+            <div className="hidden lg:flex items-center justify-center h-[400px] animate-fade-in">
+              <img 
+                src={certificationIllustration} 
+                alt="Certificate illustration" 
+                className="w-full max-w-md h-auto animate-float"
+              />
             </div>
           </div>
         </div>
