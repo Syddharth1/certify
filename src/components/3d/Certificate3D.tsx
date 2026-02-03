@@ -6,41 +6,41 @@ const LazyCanvas = React.lazy(() =>
   import('@react-three/fiber').then(mod => ({ default: mod.Canvas }))
 );
 
-interface CertificateMeshProps {
-  hovered: boolean;
-}
-
-// The actual 3D certificate component
-const CertificateMesh = ({ hovered }: CertificateMeshProps) => {
-  const meshRef = useRef<any>(null);
-  const [Frame, setFrame] = useState<any>(null);
-  const [RoundedBox, setRoundedBox] = useState<any>(null);
-  const [Text3D, setText3D] = useState<any>(null);
-  const [Center, setCenter] = useState<any>(null);
-  const [Float, setFloat] = useState<any>(null);
-  const [useFrame, setUseFrame] = useState<any>(null);
+// The actual 3D model component using the uploaded GLB
+const CertificateModel = () => {
+  const groupRef = useRef<any>(null);
+  const [scene, setScene] = useState<any>(null);
+  const [OrbitControls, setOrbitControls] = useState<any>(null);
 
   useEffect(() => {
-    // Load drei components dynamically
-    Promise.all([
-      import('@react-three/drei'),
-      import('@react-three/fiber')
-    ]).then(([drei, fiber]) => {
-      setRoundedBox(() => drei.RoundedBox);
-      setText3D(() => drei.Text3D);
-      setCenter(() => drei.Center);
-      setFloat(() => drei.Float);
-      setUseFrame(() => fiber.useFrame);
+    // Load drei components and the GLB model dynamically
+    import('@react-three/drei').then(async (drei) => {
+      setOrbitControls(() => drei.OrbitControls);
+      
+      // Load the GLB model
+      const gltfLoader = new (await import('three')).ObjectLoader();
+      const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+      const loader = new GLTFLoader();
+      
+      loader.load(
+        '/models/certificate.glb',
+        (gltf) => {
+          setScene(gltf.scene);
+        },
+        undefined,
+        (error) => {
+          console.error('Error loading GLB:', error);
+        }
+      );
     });
   }, []);
 
-  // Custom animation using requestAnimationFrame
+  // Auto-rotation animation
   useEffect(() => {
     let animationId: number;
     const animate = () => {
-      if (meshRef.current) {
-        meshRef.current.rotation.y += 0.003;
-        meshRef.current.rotation.x = Math.sin(Date.now() * 0.001) * 0.05;
+      if (groupRef.current) {
+        groupRef.current.rotation.y += 0.005;
       }
       animationId = requestAnimationFrame(animate);
     };
@@ -48,116 +48,40 @@ const CertificateMesh = ({ hovered }: CertificateMeshProps) => {
     return () => cancelAnimationFrame(animationId);
   }, []);
 
-  if (!RoundedBox || !Float) {
-    return null;
-  }
-
-  const FloatComponent = Float;
-  const RoundedBoxComponent = RoundedBox;
-
   return (
-    <FloatComponent
-      speed={2}
-      rotationIntensity={0.3}
-      floatIntensity={0.5}
-    >
-      <group ref={meshRef} scale={hovered ? 1.05 : 1}>
-        {/* Main certificate body */}
-        <RoundedBoxComponent args={[3.5, 2.5, 0.1]} radius={0.08} smoothness={4}>
-          <meshStandardMaterial
-            color="#ffffff"
-            metalness={0.1}
-            roughness={0.3}
-          />
-        </RoundedBoxComponent>
-
-        {/* Gold border frame */}
-        <RoundedBoxComponent args={[3.6, 2.6, 0.05]} radius={0.1} smoothness={4} position={[0, 0, -0.03]}>
-          <meshStandardMaterial
-            color="#d4af37"
-            metalness={0.8}
-            roughness={0.2}
-          />
-        </RoundedBoxComponent>
-
-        {/* Inner decorative border */}
-        <RoundedBoxComponent args={[3.2, 2.2, 0.02]} radius={0.05} smoothness={4} position={[0, 0, 0.06]}>
-          <meshStandardMaterial
-            color="#1a365d"
-            metalness={0.3}
-            roughness={0.5}
-          />
-        </RoundedBoxComponent>
-
-        {/* Certificate header bar */}
-        <mesh position={[0, 0.85, 0.07]}>
-          <boxGeometry args={[2.8, 0.3, 0.02]} />
-          <meshStandardMaterial color="#1a365d" metalness={0.2} roughness={0.4} />
-        </mesh>
-
-        {/* Text lines (simplified as rectangles) */}
-        {[-0.1, -0.35, -0.55].map((y, i) => (
-          <mesh key={i} position={[0, y, 0.07]}>
-            <boxGeometry args={[2.2 - i * 0.4, 0.08, 0.01]} />
-            <meshStandardMaterial color="#e2e8f0" metalness={0.1} roughness={0.6} />
-          </mesh>
-        ))}
-
-        {/* Gold seal/ribbon */}
-        <group position={[1.2, -0.8, 0.1]}>
-          {/* Seal circle */}
-          <mesh>
-            <cylinderGeometry args={[0.25, 0.25, 0.05, 32]} />
-            <meshStandardMaterial color="#d4af37" metalness={0.9} roughness={0.1} />
-          </mesh>
-          {/* Star on seal */}
-          <mesh position={[0, 0.03, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.12, 0.12, 0.02, 6]} />
-            <meshStandardMaterial color="#fef3c7" metalness={0.7} roughness={0.2} />
-          </mesh>
-        </group>
-
-        {/* QR Code placeholder */}
-        <group position={[-1.2, -0.75, 0.07]}>
-          <mesh>
-            <boxGeometry args={[0.4, 0.4, 0.02]} />
-            <meshStandardMaterial color="#1f2937" metalness={0.1} roughness={0.8} />
-          </mesh>
-          {/* QR pattern dots */}
-          {[
-            [-0.1, 0.1], [0, 0.1], [0.1, 0.1],
-            [-0.1, 0], [0.1, 0],
-            [-0.1, -0.1], [0, -0.1], [0.1, -0.1],
-          ].map(([x, y], i) => (
-            <mesh key={i} position={[x, y, 0.015]}>
-              <boxGeometry args={[0.06, 0.06, 0.01]} />
-              <meshStandardMaterial color="#ffffff" />
-            </mesh>
-          ))}
-        </group>
-      </group>
-    </FloatComponent>
-  );
-};
-
-// Three.js scene wrapper
-const CertificateScene = () => {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <group
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
-    >
+    <>
       {/* Lighting */}
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[5, 5, 5]} intensity={1} castShadow />
-      <directionalLight position={[-5, 3, -5]} intensity={0.4} color="#fef3c7" />
-      <pointLight position={[0, 0, 4]} intensity={0.5} color="#ffffff" />
-      
-      {/* Certificate */}
-      <CertificateMesh hovered={hovered} />
-    </group>
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[5, 5, 5]} intensity={1.2} castShadow />
+      <directionalLight position={[-5, 3, -5]} intensity={0.5} color="#fef3c7" />
+      <pointLight position={[0, 0, 4]} intensity={0.6} color="#ffffff" />
+      <spotLight position={[0, 10, 0]} intensity={0.4} angle={0.5} />
+
+      {/* The 3D Model */}
+      <group ref={groupRef} scale={1.5}>
+        {scene ? (
+          <primitive object={scene} />
+        ) : (
+          // Loading placeholder
+          <mesh>
+            <boxGeometry args={[2, 1.5, 0.1]} />
+            <meshStandardMaterial color="#ffffff" opacity={0.5} transparent />
+          </mesh>
+        )}
+      </group>
+
+      {/* OrbitControls for user interaction */}
+      {OrbitControls && (
+        <OrbitControls
+          enableZoom={false}
+          enablePan={false}
+          autoRotate
+          autoRotateSpeed={1}
+          minPolarAngle={Math.PI / 3}
+          maxPolarAngle={Math.PI / 1.8}
+        />
+      )}
+    </>
   );
 };
 
@@ -209,7 +133,7 @@ const LoadingCertificate = () => (
   <div className="w-full h-full flex items-center justify-center">
     <div className="text-center">
       <Loader2 className="w-10 h-10 text-white/50 animate-spin mx-auto mb-2" />
-      <p className="text-white/50 text-sm">Loading 3D preview...</p>
+      <p className="text-white/50 text-sm">Loading 3D model...</p>
     </div>
   </div>
 );
@@ -248,7 +172,7 @@ export const Certificate3D: React.FC<{ className?: string }> = ({ className = ''
             style={{ background: 'transparent' }}
             gl={{ alpha: true, antialias: true }}
           >
-            <CertificateScene />
+            <CertificateModel />
           </LazyCanvas>
         </Suspense>
       </ThreeErrorBoundary>
