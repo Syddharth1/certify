@@ -25,6 +25,8 @@ import logoVercel from "@/assets/logos/vercel.svg";
 import logoTailwind from "@/assets/logos/tailwind.svg";
 import logoVitest from "@/assets/logos/vitest.svg";
 import logoVite from "@/assets/logos/vite.svg";
+import logoFigma from "@/assets/logos/figma.svg";
+import logoSupabase from "@/assets/logos/supabase.svg";
 
 // How It Works images
 import howItWorksCreate from "@/assets/how-it-works-create.png";
@@ -57,9 +59,11 @@ const Index = () => {
     { name: "Vite", description: "Fast Build Tool", logo: logoVite },
     { name: "Tailwind CSS", description: "Utility-first CSS", logo: logoTailwind },
     { name: "Node.js", description: "JavaScript Runtime", logo: logoNodejs },
+    { name: "Supabase", description: "Backend as a Service", logo: logoSupabase },
     { name: "Redux", description: "State Management", logo: logoRedux },
     { name: "shadcn/ui", description: "UI Components", logo: logoShadcn },
     { name: "Vercel", description: "Deployment Platform", logo: logoVercel },
+    { name: "Figma", description: "Design Tool", logo: logoFigma },
     { name: "Vitest", description: "Testing Framework", logo: logoVitest },
     { name: "Git", description: "Version Control", logo: logoGit },
   ];
