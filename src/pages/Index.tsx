@@ -15,6 +15,17 @@ import iconTemplates from "@/assets/icon-templates.png";
 import iconVerification from "@/assets/icon-verification.png";
 import iconEasy from "@/assets/icon-easy.png";
 
+// Technology logos
+import logoGit from "@/assets/logos/git.svg";
+import logoReact from "@/assets/logos/react.svg";
+import logoRedux from "@/assets/logos/redux.svg";
+import logoShadcn from "@/assets/logos/shadcn.svg";
+import logoNodejs from "@/assets/logos/nodejs.svg";
+import logoVercel from "@/assets/logos/vercel.svg";
+import logoTailwind from "@/assets/logos/tailwind.svg";
+import logoVitest from "@/assets/logos/vitest.svg";
+import logoVite from "@/assets/logos/vite.svg";
+
 // How It Works images
 import howItWorksCreate from "@/assets/how-it-works-create.png";
 import howItWorksSend from "@/assets/how-it-works-send.png";
@@ -42,12 +53,15 @@ const Index = () => {
   ];
 
   const technologies = [
-    { name: "React", description: "Modern UI Library" },
-    { name: "TypeScript", description: "Type-safe JavaScript" },
-    { name: "Tailwind CSS", description: "Utility-first CSS" },
-    { name: "Supabase", description: "Backend as a Service" },
-    { name: "Vite", description: "Fast Build Tool" },
-    { name: "Fabric.js", description: "Canvas Library" },
+    { name: "React", description: "Modern UI Library", logo: logoReact },
+    { name: "Vite", description: "Fast Build Tool", logo: logoVite },
+    { name: "Tailwind CSS", description: "Utility-first CSS", logo: logoTailwind },
+    { name: "Node.js", description: "JavaScript Runtime", logo: logoNodejs },
+    { name: "Redux", description: "State Management", logo: logoRedux },
+    { name: "shadcn/ui", description: "UI Components", logo: logoShadcn },
+    { name: "Vercel", description: "Deployment Platform", logo: logoVercel },
+    { name: "Vitest", description: "Testing Framework", logo: logoVitest },
+    { name: "Git", description: "Version Control", logo: logoGit },
   ];
 
   const services = [
@@ -419,8 +433,8 @@ const Index = () => {
               {technologies.map((tech, index) => (
                 <Card key={`tech-1-${index}`} className="tech-card group hover:shadow-lg transition-all duration-300 hover:scale-105 border-2">
                   <CardContent className="p-8 text-center h-full flex flex-col justify-center">
-                    <div className="bg-gradient-to-br from-primary to-primary-hover rounded-xl w-20 h-20 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform shadow-lg">
-                      <Code className="h-10 w-10 text-white" />
+                    <div className="w-20 h-20 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform">
+                      <img src={tech.logo} alt={tech.name} className="w-16 h-16 object-contain" />
                     </div>
                     <h3 className="text-xl font-bold text-foreground mb-2">{tech.name}</h3>
                     <p className="text-muted-foreground text-sm">{tech.description}</p>
@@ -431,8 +445,8 @@ const Index = () => {
               {technologies.map((tech, index) => (
                 <Card key={`tech-2-${index}`} className="tech-card group hover:shadow-lg transition-all duration-300 hover:scale-105 border-2">
                   <CardContent className="p-8 text-center h-full flex flex-col justify-center">
-                    <div className="bg-gradient-to-br from-primary to-primary-hover rounded-xl w-20 h-20 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform shadow-lg">
-                      <Code className="h-10 w-10 text-white" />
+                    <div className="w-20 h-20 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform">
+                      <img src={tech.logo} alt={tech.name} className="w-16 h-16 object-contain" />
                     </div>
                     <h3 className="text-xl font-bold text-foreground mb-2">{tech.name}</h3>
                     <p className="text-muted-foreground text-sm">{tech.description}</p>
